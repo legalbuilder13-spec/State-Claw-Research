@@ -1,0 +1,108 @@
+# High-risk jurisdictions
+#
+# Jurisdictions where worker-classification (or other primary risk) is
+# under heightened scrutiny by courts, regulators, or plaintiffs' bar.
+# The orchestrator uses this to:
+#   1. Tighten R10 CurrencyTag staleness thresholds (more frequent corpus refresh)
+#   2. Increase retrieval breadth (more sub-agent passes on cross-refs, exemptions)
+#   3. Lower the bar for R11 LowConfidenceGate to trigger (be more conservative)
+
+# ============================================================================
+# Worker-classification high-risk jurisdictions
+# ============================================================================
+
+worker_classification_high_risk:
+  - id: US-CA
+    rationale: "AB5 / Lab. Code § 2775 codified the ABC test in 2019. Highest-volume IC litigation jurisdiction. Prong B is doctrinally narrow."
+    treatment_overrides:
+      r10_staleness_days_statute: 30   # Tighter than default 90.
+      r10_staleness_days_case: 7
+      orchestrator_min_retrievals: 5    # Force broader retrieval before closing analysis.
+
+  - id: US-IL
+    rationale: "Day & Temporary Labor Services Act (820 ILCS 175) sweeps platforms by definition; Illinois ABC test (Workers' Compensation, employment, unemployment all use variants)."
+    treatment_overrides:
+      r10_staleness_days_statute: 60
+      orchestrator_min_retrievals: 4
+
+  - id: US-MA
+    rationale: "Mass. Gen. Laws ch. 149 § 148B (the original strict ABC test, predates CA)."
+    treatment_overrides:
+      r10_staleness_days_statute: 60
+
+  - id: US-NJ
+    rationale: "N.J.S.A. 43:21-19 ABC test; broad enforcement under state attorney general."
+    treatment_overrides:
+      r10_staleness_days_statute: 60
+
+  - id: US-MN
+    rationale: "MN ABC test under MN Stat. § 181.722."
+    treatment_overrides:
+      r10_staleness_days_statute: 60
+
+  - id: US-DC
+    rationale: "Broad classification standards under DC Wage Theft Prevention Amendment Act."
+    treatment_overrides:
+      r10_staleness_days_statute: 60
+
+  - id: US-NY
+    rationale: "Active enforcement under NY Labor Law; NY Court of Appeals has interpreted classification broadly."
+    treatment_overrides:
+      r10_staleness_days_statute: 60
+      orchestrator_min_retrievals: 4
+
+  - id: US-WA
+    rationale: "WA ABC test under RCW 50.04.140."
+
+  - id: US-CT
+    rationale: "CT ABC test under Conn. Gen. Stat. § 31-222."
+
+# ============================================================================
+# Joint-employer high-risk jurisdictions
+# ============================================================================
+
+joint_employer_high_risk:
+  - id: US-CA
+    rationale: "CA Lab. Code § 2810.3 (client-employer liability for wage violations) plus active state DLSE enforcement."
+
+  - id: US-NJ
+    rationale: "Broad NJ joint-employer doctrine."
+
+# ============================================================================
+# Industry-specific high-risk jurisdictions (operator-specific)
+# ============================================================================
+
+# Operators: add jurisdictions where YOUR industry faces heightened licensing,
+# permit, or operational scrutiny. Examples for some verticals:
+
+healthcare_staffing_high_risk:
+  - id: US-NY
+    rationale: "NY State Health Department oversight of healthcare staffing; nursing agency licensing under NY Pub. Health Law."
+  - id: US-NJ
+    rationale: "NJ Healthcare Worker Tax Credit Act includes nursing-agency provisions."
+  - id: US-IL
+    rationale: "IL Nurse Agency Licensing Act; Day & Temporary Labor Services Act compliance."
+  - id: US-MA
+    rationale: "MA Nursing Pool Regulation Act."
+  - id: US-FL
+    rationale: "FL nurse-registry licensing under Fla. Stat. § 400."
+
+rideshare_high_risk:
+  # Placeholder — operator replaces if running a rideshare marketplace
+  - id: US-CA
+    rationale: "Prop 22 (post-AB5 carve-out); active state DLSE / DIR oversight."
+  - id: US-WA
+    rationale: "WA HB 2076 (state-mandated minimum compensation, benefits)."
+
+# ============================================================================
+# Application
+# ============================================================================
+# When the active TaskSpec.jurisdictions includes any jurisdiction in
+# worker_classification_high_risk OR joint_employer_high_risk OR a
+# vertical-specific high-risk list that matches company.yaml's vertical,
+# the orchestrator applies the treatment_overrides for the most restrictive
+# matching jurisdiction.
+#
+# When a deliverable spans multiple high-risk jurisdictions, the most
+# restrictive thresholds (smallest staleness days, largest min_retrievals)
+# apply across all of them.

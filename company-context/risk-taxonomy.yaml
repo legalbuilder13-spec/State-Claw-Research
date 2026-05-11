@@ -1,0 +1,133 @@
+# Risk taxonomy
+#
+# The categories every deliverable's classification overlay (R12) must address.
+# For each category, every deliverable produces either:
+#   - flagged + severity + rationale  (the subject matter implicates this risk)
+#   - cleared + rationale              (the subject matter does not implicate this risk)
+#
+# Replace / extend the categories below to match your company's actual risk surface.
+
+# ============================================================================
+# Worker classification — the central risk for gig-economy marketplaces
+# ============================================================================
+
+worker_classification:
+  abc_test:
+    description: "California's three-prong ABC test (CA Lab. Code § 2775) and its analogs in MA, NJ, IL, MN."
+    jurisdictions: [US-CA, US-MA, US-NJ, US-IL, US-MN, US-NM, US-CT, US-WA]
+    severity_when_flagged: critical
+    notes: "Prong B (worker performs work outside usual course of hiring entity's business) is the load-bearing prong for tech-marketplace defense."
+
+  common_law_agency:
+    description: "Federal and state common-law right-to-control test. Default test in jurisdictions that haven't adopted ABC."
+    jurisdictions: [US, all_states]
+    severity_when_flagged: high
+    notes: "Multi-factor; no single factor controls. Behavioral-control language has outsized weight."
+
+  joint_employer_flsa:
+    description: "Federal FLSA joint-employer test (29 CFR 791)."
+    jurisdictions: [US]
+    severity_when_flagged: high
+
+  joint_employer_state:
+    description: "State joint-employer doctrines (often broader than federal)."
+    jurisdictions: [all_states]
+    severity_when_flagged: medium
+    notes: "Varies by state; check whether the deliverable's jurisdiction has a state-specific joint-employer expansion."
+
+  marketplace_contractor_statutes:
+    description: "State statutes that codify IC status for marketplace-platform workers (CO HB18-1316, ID, FL, IN, TN, etc.)."
+    jurisdictions: [US-CO, US-ID, US-FL, US-IN, US-TN, US-IA, US-KY, US-UT, US-AZ]
+    severity_when_flagged: medium
+    notes: "When applicable, these statutes provide affirmative IC status if the platform meets enumerated criteria."
+
+  borello_multi_factor:
+    description: "CA's pre-Dynamex multi-factor IC test (S.G. Borello & Sons v. DIR, 48 Cal.3d 341 (1989))."
+    jurisdictions: [US-CA]
+    severity_when_flagged: medium
+    notes: "Still applies in CA when ABC test is statutorily inapplicable (specific exempt occupations under § 2783)."
+
+  economic_realities_test:
+    description: "Federal DOL economic-realities test (29 CFR 795, post-2024 changes)."
+    jurisdictions: [US]
+    severity_when_flagged: high
+
+# ============================================================================
+# Control indicators — the substantive factors classification tests evaluate
+# ============================================================================
+
+control_indicators:
+  behavioral_control:
+    description: "Supervision, direction, training, evaluation."
+    severity_when_flagged: critical
+    auto_flag_when:
+      - "Deliverable mentions <Company> training workers"
+      - "Deliverable mentions <Company> supervising work"
+      - "Deliverable references contractual obligation for <Company> to ensure worker compliance with customer/facility policies"
+
+  financial_control:
+    description: "Rate-setting, exclusivity, business-expense exposure, payment terms."
+    severity_when_flagged: high
+    auto_flag_when:
+      - "Deliverable mentions <Company> setting worker rates (vs. facilitating worker-set rates)"
+      - "Deliverable mentions exclusivity requirements"
+      - "Deliverable mentions <Company> covering worker business expenses (insurance, equipment, etc.)"
+
+  relationship_indicators:
+    description: "Written contracts, permanency, integration into business, services-as-core-business."
+    severity_when_flagged: medium
+
+# ============================================================================
+# Licensing risk
+# ============================================================================
+
+licensing:
+  staffing_agency_licensing:
+    description: "State staffing-agency licensing requirements that would apply if <Company> were characterized as a staffing agency."
+    jurisdictions: [US-NY, US-NJ, US-IL, US-CA, US-MA, US-FL]   # representative; not exhaustive
+    severity_when_flagged: high
+    notes: "Avoiding staffing-agency characterization (terminology.yaml: never use 'staffing agency') is preventive."
+
+  professional_employer_organization:
+    description: "PEO co-employment classification under state PEO statutes."
+    jurisdictions: [US, all_states]
+    severity_when_flagged: medium
+    notes: "Typically not implicated for marketplace models but check when contractual language suggests co-employment."
+
+  industry_specific_licensing:
+    description: "Industry-specific licensing for the supply-side service the marketplace facilitates."
+    jurisdictions: [varies]
+    severity_when_flagged: medium
+    notes: "E.g., for healthcare staffing: state nursing-agency licensing. For rideshare: TNC licensing. Operator-specific."
+
+# ============================================================================
+# Other operator-specific risks
+# ============================================================================
+
+other:
+  conversion_fee_prohibition:
+    description: "Some jurisdictions / customer contracts prohibit charging direct-hire or conversion fees."
+    severity_when_flagged: low
+    notes: "<Company> does not charge these (per fact-pattern.md). Auto-clears unless deliverable's subject is contractual language proposing one."
+
+  hcf_policy_compliance:
+    description: "Contract language requiring <Company> to ensure worker compliance with customer/facility policies (a behavioral-control trap)."
+    severity_when_flagged: critical
+    notes: "See CLAUDE.md and PRD §X — this is a load-bearing redline pattern."
+
+  background_check_obligations:
+    description: "Allocation of background-check responsibility between <Company>, the customer/facility, and the worker."
+    severity_when_flagged: medium
+
+  hipaa_baa_required:
+    description: "When the engagement involves protected health information, BAA requirements apply."
+    severity_when_flagged: medium
+    notes: "Applies only to verticals handling PHI (e.g., healthcare staffing). Auto-clears for other verticals."
+
+  consumer_protection_disclosure:
+    description: "State consumer-protection or marketplace-disclosure statutes (CA SB 1162 pay transparency, NYC Local Law 144, etc.)."
+    severity_when_flagged: low
+
+  data_privacy:
+    description: "Worker-data and customer-data privacy obligations under state laws (CCPA/CPRA, VCDPA, etc.)."
+    severity_when_flagged: medium

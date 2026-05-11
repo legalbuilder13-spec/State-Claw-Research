@@ -1,0 +1,132 @@
+# Verb principle
+#
+# Verbs are the single most consequential word-choice in classification
+# analysis. "The worker accepts engagements" implies IC; "the company assigns
+# engagements" implies employment. This file calls out the verb subset of
+# the broader terminology.yaml, because verbs deserve their own attention.
+#
+# Applied by the Critic during paraphrase review.
+
+# ============================================================================
+# Preferred verbs when describing each actor's actions
+# ============================================================================
+
+actor_verbs:
+  company:
+    # What <Company> does
+    preferred:
+      - "facilitates"
+      - "connects"
+      - "enables"
+      - "matches"
+      - "displays"
+      - "lists"
+      - "verifies"           # for eligibility verification — gatekeeping not supervision
+      - "processes payment"
+      - "provides infrastructure"
+      - "operates the platform"
+
+    avoided:
+      - "hires"
+      - "employs"
+      - "engages"            # ambiguous — let the customer "engage" the worker
+      - "deploys"
+      - "assigns"
+      - "sends"
+      - "places"
+      - "schedules"          # the worker schedules themselves; <Company> doesn't schedule them
+      - "supervises"
+      - "manages"
+      - "trains"             # the platform doesn't train; if anyone does, the customer/facility does
+      - "directs"
+      - "controls"
+      - "instructs"
+      - "evaluates"          # not in an employment sense
+      - "disciplines"
+      - "promotes"
+
+  worker:
+    # What the supply-side worker does
+    preferred:
+      - "books"
+      - "accepts"
+      - "declines"
+      - "performs"
+      - "provides services"
+      - "completes"
+      - "chooses"
+      - "selects"
+      - "sets"               # own rates, own hours (where applicable)
+      - "operates"           # their own business
+      - "exercises"          # independent professional judgment
+
+    avoided:
+      - "is assigned to"
+      - "is sent to"
+      - "is deployed by"
+      - "is scheduled for"
+      - "is trained by <Company>"
+      - "reports to <Company>"
+      - "works for <Company>"     # works through, not for
+      - "is supervised by <Company>"
+      - "is hired by <Company>"
+
+  customer:
+    # What the demand-side customer / facility does
+    preferred:
+      - "books"
+      - "engages"            # the customer engages the worker, not <Company>
+      - "selects"
+      - "requests"
+      - "directs"            # the customer directs the work, not <Company>
+      - "supervises"         # the customer supervises (where applicable to the engagement type)
+      - "provides instructions"
+      - "sets the requirements"
+
+    avoided:
+      - "employs"            # the customer typically isn't a W-2 employer of the worker either; both parties want IC framing
+      - "hires"              # same
+      - "manages <Company>"  # <Company> isn't managed by the customer
+
+# ============================================================================
+# Hidden-actor traps
+# ============================================================================
+
+passive_voice_traps:
+  description: |
+    Passive constructions hide which actor is doing the verb. In classification
+    analysis, this can quietly attribute control to <Company> by omission.
+  examples_to_rewrite:
+    - "The worker is required to follow facility protocols."
+      # Who requires? Critic asks: rewrite as "The facility requires the worker to follow its protocols"
+    - "Workers are evaluated based on customer feedback."
+      # Who evaluates? Critic flags: rewrite as "Customers may provide feedback through the platform"
+    - "Workers are screened for eligibility."
+      # By whom? Critic asks: rewrite as "<Company> verifies eligibility through ..."
+      # (this one is fine since <Company> does perform eligibility verification,
+      # but the active voice makes it clear and limits the verb to the
+      # gatekeeping scope.)
+    - "Training is provided."
+      # By whom? Critic asks: if "by <Company>", strike — <Company> doesn't train.
+      # If "by the customer," rewrite as "The customer may make training materials available"
+
+# ============================================================================
+# Modal verbs in obligations
+# ============================================================================
+
+modal_verb_rules:
+  description: |
+    The choice between "shall" / "must" / "may" / "should" in contract drafts
+    has direct classification implications. Stronger modals attached to
+    <Company> imply control.
+  guidance:
+    company_obligations:
+      preferred_modals: ["may", "will"]
+      avoid_modals: ["must", "shall be responsible for", "is required to"]
+      rationale: "Strong modals attached to <Company> obligations imply we're enforcing standards rather than facilitating connections."
+    worker_obligations:
+      preferred_modals: ["shall"]   # in IC agreements, the worker shall do X is fine — that's defining the worker's commitment to the customer, not <Company>'s control over the worker
+      caveat: "Only when the obligation runs between worker and customer, not between worker and <Company>."
+    facility_obligations:
+      preferred_modals: ["shall", "will"]
+      rationale: "Facility-to-worker obligations are between those two parties; <Company> facilitates."

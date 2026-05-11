@@ -1,0 +1,132 @@
+# Terminology rules
+#
+# Enforced by the Critic sub-agent and the Renderer.
+# Every deliverable's prose is scanned against these lists; matches against
+# `never_use` produce blocking errors; missing instances of `always_use`
+# trigger softer warnings for the relevant subject matter.
+#
+# Replace the generic placeholders with your industry's terms.
+
+# ============================================================================
+# Words / phrases that MUST be used (when discussing the relevant subject)
+# ============================================================================
+
+always_use:
+  # When referring to supply-side workers, use these terms:
+  - subject: worker_classification
+    context: "When referring to the supply-side party performing the engagement."
+    preferred_terms:
+      - "independent contractor"
+      - "<worker title, e.g., professional, driver, freelancer, provider>"
+      - "the worker"
+    purpose: "Reinforces IC classification and avoids employment implications."
+
+  # When referring to the company:
+  - subject: company_role
+    context: "When describing what <Company> is."
+    preferred_terms:
+      - "marketplace"
+      - "platform"
+      - "technology infrastructure"
+      - "intermediary"
+    purpose: "Reinforces technology-not-employer position. Critical for ABC Prong B."
+
+  # When referring to the demand-side party:
+  - subject: customer_role
+    context: "When describing the demand-side party (the entity engaging the worker)."
+    preferred_terms:
+      - "<customer label from company.yaml>"
+      - "the customer"
+      - "the facility"   # if applicable to your vertical
+    purpose: "Avoid framing that suggests <Company> is doing the engaging."
+
+# ============================================================================
+# Words / phrases that must NEVER be used in any deliverable
+# ============================================================================
+
+never_use:
+  # Employment-implying terms:
+  - subject: worker_classification
+    forbidden_terms:
+      - "employee"
+      - "employees"
+      - "employed by"
+      - "W-2"
+      - "W2"
+      - "hire"             # When referring to <Company>'s relationship with worker
+      - "hired"
+      - "staff"
+      - "staffing"         # When referring to the relationship; "staffing agency definitions" is fine in context
+      - "personnel"
+      - "agent"            # In agency-law sense applied to worker
+      - "representative of <Company>"
+    purpose: "Misclassification language. Single load-bearing error per PRD's R3 / R4 enforcement of fact-pattern fidelity."
+    exceptions:
+      - "When quoting a statute or case that uses the term verbatim (R4 anchored quote)."
+      - "When citing a counterparty's contractual language for the purpose of redlining (e.g., 'the proposed clause refers to \"staff\" — recommend striking')."
+      - "When the analysis is explicitly about whether the worker should be classified as an employee under a particular test."
+
+  # Staffing-agency framing:
+  - subject: company_role
+    forbidden_terms:
+      - "staffing agency"            # for <Company>
+      - "staffing firm"
+      - "temp agency"
+      - "temporary services agency"
+      - "agency"                     # as descriptor of <Company>
+      - "labor broker"
+    purpose: "Staffing-agency classification triggers a separate body of state-licensing law that does not apply to <Company>."
+
+  # Joint-employer framing:
+  - subject: joint_employer
+    forbidden_terms:
+      - "<Company>'s workers"
+      - "<Company>'s nurses"          # adapt to industry
+      - "<Company>'s drivers"          # adapt to industry
+      - "<Company>'s contractors"      # ambiguous — possessive implies employment
+      - "places staff"
+      - "sends workers to"
+      - "deploys workers to"
+      - "assigns workers to"
+    purpose: "Joint-employer liability arises from language implying shared control. Possessive framing implies employment relationship."
+
+  # Behavioral-control language:
+  - subject: behavioral_control
+    forbidden_terms:
+      - "<Company> requires the worker to ..."
+      - "<Company> directs the worker to ..."
+      - "<Company> supervises the worker"
+      - "<Company> manages the worker"
+      - "<Company> trains the worker"
+      - "<Company> evaluates the worker's performance"
+      - "<Company>'s training program"
+      - "<Company>'s supervision"
+    purpose: "These phrases attribute behavioral control to <Company> in a way that defeats IC classification. Use 'the customer requires ...' or 'the worker chooses ...' or restructure the sentence."
+
+  # Direct-hire / conversion fee:
+  - subject: conversion_fee
+    forbidden_terms:
+      - "conversion fee"
+      - "direct-hire fee"
+      - "temp-to-perm fee"
+      - "buyout fee"
+    purpose: "<Company> does NOT charge these. Any contractual language suggesting we do is corrected at intake."
+
+# ============================================================================
+# Phrases that warrant scrutiny (not banned, but flagged for review)
+# ============================================================================
+
+scrutinize:
+  - subject: ambiguous_pronouns
+    pattern_examples:
+      - "they require"        # who is "they"?
+      - "our workers"         # whose workers?
+      - "their employees"     # whose employees?
+    purpose: "Ambiguous pronouns in classification analysis often hide load-bearing assumptions. Critic flags for explicit subject."
+
+  - subject: hedged_employment_terms
+    pattern_examples:
+      - "could be classified as an employee"
+      - "may be considered an employee"
+      - "treated as an employee"
+    purpose: "Sometimes legitimate (the question IS whether the worker would be reclassified); sometimes a hedge that should commit to a position. Critic surfaces; reviewer decides."

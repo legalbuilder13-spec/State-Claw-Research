@@ -1,0 +1,84 @@
+# Company identity + business model
+#
+# Replace every <Placeholder> with your company's specifics.
+# This file is loaded on every run; it grounds the agent's analysis in
+# the operator's actual business rather than abstract legal theory.
+
+company:
+  name: "<Company>"               # Full legal name, e.g., "Acme Marketplace, Inc."
+  short_name: "<Co>"              # Short reference, e.g., "Acme"
+  vertical: "gig-economy-marketplace"   # See PRD §2 for supported verticals.
+
+  business_model:
+    type: "two-sided online marketplace"
+    role: "technology infrastructure / intermediary"
+
+    demand_side:
+      label: "<Customer Type>"          # e.g., "businesses", "facilities", "homeowners"
+      description: "<one-sentence description of the demand-side party>"
+
+    supply_side:
+      label: "<Worker Type>"            # e.g., "drivers", "professionals", "service providers"
+      description: "<one-sentence description of the supply-side party>"
+      classification_intended: "independent contractor"
+
+    not_role:
+      # Roles the company explicitly is NOT. R12 ClassificationOverlay
+      # references this to enforce framing consistency.
+      - "staffing agency"
+      - "temporary services agency"
+      - "<industry> services company"
+      - "employer of supply-side workers"
+      - "joint employer with demand-side counterparties"
+
+  worker_classification:
+    # Primary tests the company's IC model must satisfy.
+    # R12 flags any deliverable touching a worker-classification question
+    # against each of these.
+    primary_tests_we_must_pass:
+      - "ABC Test (CA, MA, NJ, others)"
+      - "Common-law agency / right-to-control"
+      - "Joint-employer (FLSA + state variants)"
+      - "Statutory staffing-agency definitions"
+      - "Marketplace contractor / platform-worker statutes"
+      - "Economic-realities test (federal)"
+      - "Borello multi-factor (CA, where ABC doesn't apply)"
+
+    # Behavioral indicators we must preserve. These are the affirmative
+    # factors the Drafter should strengthen, not weaken, in every analysis.
+    behavioral_indicators_to_preserve:
+      - "Worker selects when / where / whether to accept individual bookings"
+      - "Worker provides their own tools / equipment / credentials (where applicable)"
+      - "Worker may decline any individual booking"
+      - "Worker sets their own work methods"
+      - "No company-imposed dress code beyond what the customer / facility may set"
+      - "No company-mandated supervision of clinical / operational work"
+
+    financial_indicators_to_preserve:
+      - "Worker bears business expenses (their own equipment, licensing, etc.)"
+      - "Worker faces real opportunity for profit / loss"
+      - "Worker may work for competitors of the company"
+      - "No exclusivity contractually required"
+
+    relationship_indicators_to_preserve:
+      - "Written IC agreement"
+      - "Engagement is per-booking; no expectation of continuous work"
+      - "Worker is not integrated into the company's day-to-day operations"
+
+  # Storage of company-context updates over time and prior matter context.
+  context_stores:
+    primary:   "notion"
+    secondary: "google_drive"
+
+  # Citation style preference (PRD §20 decision 10).
+  citation_style:
+    default: "bluebook"
+    overrides_per_jurisdiction: {}
+    # Example:
+    # overrides_per_jurisdiction:
+    #   US-CA: "california_style_manual"
+
+  # Stamp text for every deliverable (R12 / PRD §3 non-goal 2).
+  deliverable_stamp:
+    standard: "DRAFT FOR COUNSEL REVIEW"
+    incomplete: "RESEARCH INCOMPLETE — DO NOT RELY ON THIS DRAFT"

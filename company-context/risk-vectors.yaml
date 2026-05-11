@@ -1,0 +1,112 @@
+# Risk vectors
+#
+# Mandatory check vectors — questions the Classification sub-agent asks
+# itself before closing every analysis. Each vector points at one or more
+# risk-taxonomy categories. The combination of vectors + taxonomy ensures
+# every deliverable systematically considers the operator's actual exposure.
+
+vectors:
+  # ==========================================================================
+  # CLASSIFICATION VECTORS
+  # ==========================================================================
+
+  - id: vector_abc_test_prong_a
+    question: "Does the deliverable's subject matter implicate ABC Prong A (worker's freedom from control / direction)?"
+    triggers_categories: [worker_classification.abc_test, control_indicators.behavioral_control]
+    when_to_flag: "Any analysis touching how / when / where the worker performs their work."
+
+  - id: vector_abc_test_prong_b
+    question: "Does the deliverable's subject matter implicate ABC Prong B (work outside the usual course of <Company>'s business)?"
+    triggers_categories: [worker_classification.abc_test]
+    when_to_flag: "Any analysis touching the boundary between <Company>'s technology-marketplace business and the supply-side service."
+    notes: "Prong B is the load-bearing prong for marketplace defense. Treat as critical."
+
+  - id: vector_abc_test_prong_c
+    question: "Does the deliverable's subject matter implicate ABC Prong C (worker's independently established trade)?"
+    triggers_categories: [worker_classification.abc_test]
+    when_to_flag: "Any analysis touching the worker's other engagements, business operations, or independence."
+
+  - id: vector_behavioral_control
+    question: "Does the deliverable contain language attributing supervision, direction, training, or evaluation of the worker to <Company>?"
+    triggers_categories: [control_indicators.behavioral_control, worker_classification.common_law_agency]
+    when_to_flag: "ALWAYS — every deliverable is scanned for behavioral-control attribution."
+    notes: "Highest-frequency drift pattern. Critic scans for verbs from verb-principle.yaml's company.avoided list."
+
+  - id: vector_financial_control
+    question: "Does the deliverable implicate financial-control factors (rate setting, exclusivity, expense allocation)?"
+    triggers_categories: [control_indicators.financial_control]
+    when_to_flag: "Any analysis touching rates, payment terms, or business-expense allocation between <Company> and worker."
+
+  - id: vector_relationship_indicators
+    question: "Does the deliverable implicate relationship-type factors (permanency, integration, service-as-core-business)?"
+    triggers_categories: [control_indicators.relationship_indicators]
+    when_to_flag: "Any analysis touching contract structure, engagement duration, or integration into <Company>'s operations."
+
+  # ==========================================================================
+  # JOINT-EMPLOYER VECTORS
+  # ==========================================================================
+
+  - id: vector_joint_employer
+    question: "Does the deliverable's analysis depend on whether <Company> and the customer / facility are joint employers of the worker?"
+    triggers_categories: [worker_classification.joint_employer_flsa, worker_classification.joint_employer_state]
+    when_to_flag: "Whenever the analysis involves both <Company> and a customer/facility as parties to the worker's work."
+
+  - id: vector_co_employment_lite
+    question: "Does the deliverable reference any contract clause that could be read as shared control between <Company> and the customer (e.g., '<Company> shall ensure worker compliance with facility policies')?"
+    triggers_categories: [other.hcf_policy_compliance, control_indicators.behavioral_control]
+    when_to_flag: "Any contract-language analysis — even when the surface question seems unrelated."
+    notes: "This is the pattern PRD § HCF Policy Compliance flagged. Critic scans contract-review deliverables for this specifically."
+
+  # ==========================================================================
+  # LICENSING VECTORS
+  # ==========================================================================
+
+  - id: vector_staffing_agency_lens
+    question: "Does the deliverable's analysis depend on whether <Company> would be characterized as a staffing agency under the relevant jurisdiction's statute?"
+    triggers_categories: [licensing.staffing_agency_licensing, worker_classification.marketplace_contractor_statutes]
+    when_to_flag: "Any analysis where a jurisdiction has a statutory staffing-agency definition that <Company> needs to fall outside of."
+
+  - id: vector_industry_specific_licensing
+    question: "Does the deliverable touch an industry-specific licensing regime for the supply-side service?"
+    triggers_categories: [licensing.industry_specific_licensing]
+    when_to_flag: "Operator-specific. For healthcare staffing: state nursing-agency licensing. For other verticals: per-vertical replacement."
+
+  # ==========================================================================
+  # CONTRACT-SPECIFIC VECTORS
+  # ==========================================================================
+
+  - id: vector_facility_policy_obligation
+    question: "Does any proposed contract clause attempt to make <Company> contractually responsible for ensuring worker compliance with customer/facility policies?"
+    triggers_categories: [other.hcf_policy_compliance, control_indicators.behavioral_control]
+    when_to_flag: "Any contract-review or contract-drafting deliverable."
+    notes: "Per PRD § HCF Policy Compliance: route this kind of language out of <Company>'s contractual obligations and into the platform's onboarding/acknowledgment flow."
+
+  - id: vector_direct_hire_fee
+    question: "Does the contract include any direct-hire / conversion / temp-to-perm fee that <Company> would charge?"
+    triggers_categories: [other.conversion_fee_prohibition]
+    when_to_flag: "Any contract-review deliverable involving <Company>'s commercial terms."
+    notes: "Per fact-pattern.md, <Company> does not charge these. Reject the clause."
+
+  # ==========================================================================
+  # PRIVACY + DATA VECTORS
+  # ==========================================================================
+
+  - id: vector_phi_handling
+    question: "Does the deliverable involve PHI handling that would trigger HIPAA BAA requirements?"
+    triggers_categories: [other.hipaa_baa_required]
+    when_to_flag: "Healthcare verticals only; auto-clear for non-PHI verticals."
+
+  - id: vector_worker_data_privacy
+    question: "Does the deliverable touch state privacy law obligations (CCPA, VCDPA, etc.) over worker / customer data?"
+    triggers_categories: [other.data_privacy]
+    when_to_flag: "Any analysis touching data collection, sharing with customers, or third-party background-check vendors."
+
+  # ==========================================================================
+  # DELIVERABLE-INTEGRITY VECTORS
+  # ==========================================================================
+
+  - id: vector_marketing_framing
+    question: "Is the deliverable adjacent to marketing or external-facing content? Apply the IC-classification language constraints from terminology.yaml strictly."
+    triggers_categories: [worker_classification.common_law_agency, control_indicators.behavioral_control]
+    when_to_flag: "Marketing reviews, social-media scripts, ad copy, public-facing FAQs."
+    notes: "Marketing copy is highest-frequency source of accidental classification language."
