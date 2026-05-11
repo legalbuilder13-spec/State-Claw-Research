@@ -118,9 +118,16 @@ async def run_ingestion(
             chunks_inserted += inserted
             errors += err
 
-    # UPSERT corpus_freshness
+    # UPSERT corpus_freshness with the TOTAL chunks in the corpus for this
+    # (jurisdiction, source_kind), not just the per-run inserts. Idempotent
+    # re-runs would otherwise zero out the count.
     currency = await source.confirm_currency()
+    chunk_count_table = "statute_chunks" if kind == "primary_statute" else "regulation_chunks"
     async with transaction() as conn:
+        total_chunks = await conn.fetchval(
+            f"SELECT count(*) FROM {chunk_count_table} WHERE jurisdiction=$1",  # noqa: S608
+            jurisdiction,
+        )
         await upsert_corpus_freshness(
             conn,
             jurisdiction=jurisdiction,
@@ -128,7 +135,7 @@ async def run_ingestion(
             current_through=currency.current_through,
             last_ingested_at=started_at,
             ingestion_run_id=run_id,
-            chunk_count=chunks_inserted,
+            chunk_count=int(total_chunks or 0),
             error_message=None if errors == 0 else f"{errors} doc-level errors",
         )
 

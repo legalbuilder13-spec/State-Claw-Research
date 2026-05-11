@@ -22,7 +22,7 @@ infrastructure here scales without further architecture changes.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import AsyncIterator
 
@@ -47,14 +47,22 @@ _SECTION_URL = (
 
 @dataclass(slots=True)
 class _ChapterScope:
-    """A chapter we know how to enumerate."""
+    """A chapter we know how to enumerate.
+
+    `section_range` is the inclusive integer range fetched from leginfo.
+    `extra_sections` carries decimal-numbered sections (e.g., "226.8",
+    "2810.3") that fall outside the integer iteration but belong to the
+    same chapter; leginfo addresses them by their full string section
+    number.
+    """
 
     code: str                            # 'LAB' (Labor Code; URL parameter)
     code_bluebook: str                   # 'Lab.' (Bluebook abbreviation; for the corpus row)
     chapter_label: str                   # 'Division 3 Part 1 Chapter 2'
     section_range: tuple[int, int]       # inclusive section number range, e.g. (2750, 2787)
-    definitions_sections: set[int]       # sections that are the chapter's Definitions block
-    exemption_sections: set[int]         # sections that are exemption blocks (R15 criterion 3)
+    extra_sections: tuple[str, ...] = ()                                  # decimal-numbered sections
+    definitions_sections: set[int] = field(default_factory=set)
+    exemption_sections: set[int] = field(default_factory=set)
 
 
 # Registry of chapters this source knows how to enumerate.
@@ -70,6 +78,60 @@ _CHAPTER_REGISTRY: dict[str, _ChapterScope] = {
         section_range=(2750, 2787),
         definitions_sections=set(range(2750, 2774)),    # §§ 2750–2773
         exemption_sections={2776, 2777, 2778, 2779, 2780, 2781, 2782, 2783, 2784, 2785},
+    ),
+
+    # CA Labor Code Division 2, Part 1, Chapter 1 — Payment of Wages.
+    # Wage definition (§§ 200-204), wage statement requirements (§ 226),
+    # itemized statements, frequency of payment, deductions. Adjacent to
+    # IC analysis via joint-employer doctrines and wage-and-hour exposure.
+    "Lab. Code Division 2 Part 1 Chapter 1 (Payment of Wages)": _ChapterScope(
+        code="LAB",
+        code_bluebook="Lab.",
+        chapter_label="Division 2 Part 1 Chapter 1",
+        section_range=(200, 245),
+        extra_sections=("226.2", "226.3", "226.7", "226.8"),  # decimal-numbered sections in this chapter
+        # §§ 200-204 are the wage / labor / wages / payment definitions.
+        definitions_sections=set(range(200, 205)),
+        exemption_sections=set(),
+    ),
+
+    # CA Labor Code Division 3, Part 1, Chapter 1 (Employer / Employee
+    # general provisions, §§ 2700-2749) — the broader chapter that
+    # contains the common-law-agency-adjacent provisions immediately
+    # preceding our Chapter 2 ABC test work. Worth ingesting for R8
+    # cross-reference resolution into Chapter 2.
+    "Lab. Code Division 3 Part 1 Chapter 1 (General Provisions)": _ChapterScope(
+        code="LAB",
+        code_bluebook="Lab.",
+        chapter_label="Division 3 Part 1 Chapter 1",
+        section_range=(2700, 2749),
+        definitions_sections={2700, 2701, 2702, 2703, 2704, 2705, 2706, 2707, 2708, 2709, 2710},
+        exemption_sections=set(),
+    ),
+
+    # Discrete operative sections outside the chapter blocks above but
+    # frequently referenced in IC classification / joint-employer analysis.
+    # Modeled as a synthetic single-section "chapter" each so they can be
+    # filtered / referenced cleanly.
+
+    # § 226.8 — Willful misclassification penalty (operative for R12 risk-taxonomy
+    # .control_indicators.behavioral_control + .relationship_indicators).
+    # Already included via Division 2 Part 1 Chapter 1's extra_sections, but
+    # also exposed as its own synthetic chapter for chapter_filter targeting.
+
+    # § 2810.3 — Client-employer joint liability for wage-and-hour violations
+    # (the R7 / joint_employer canonical test case in CA).
+    "Lab. Code Joint Liability (§ 2810.3)": _ChapterScope(
+        code="LAB",
+        code_bluebook="Lab.",
+        chapter_label="Division 2 Part 3.7 Chapter 1",
+        section_range=(2810, 2810),
+        extra_sections=("2810.3", "2810.5", "2810.6", "2810.7"),
+        # § 2810.5 contains a delegation clause ('the Labor Commissioner shall
+        # adopt regulations...') — the canonical R7 RegSearchOnDelegation
+        # detection case for our test corpus.
+        definitions_sections=set(),
+        exemption_sections=set(),
     ),
 }
 
@@ -134,10 +196,19 @@ class CaliforniaSource(Source):
     async def _enumerate_chapter(
         self, chapter: _ChapterScope, scope: IngestionScope
     ) -> AsyncIterator[RawDocument]:
-        """Enumerate sections within a known chapter."""
+        """Enumerate sections within a known chapter.
+
+        Yields every integer section in the chapter's section_range plus every
+        decimal-numbered section in chapter.extra_sections. Section-filter is
+        applied if scope.section_filter is set.
+        """
         section_filter = scope.section_filter
-        for sec_num in range(chapter.section_range[0], chapter.section_range[1] + 1):
-            sec_str = str(sec_num)
+
+        # Build the full ordered list of section IDs to fetch.
+        integer_sections = [str(n) for n in range(chapter.section_range[0], chapter.section_range[1] + 1)]
+        section_ids: list[str] = integer_sections + list(chapter.extra_sections)
+
+        for sec_str in section_ids:
             if section_filter and sec_str != section_filter:
                 continue
 
@@ -157,6 +228,19 @@ class CaliforniaSource(Source):
                 # repealed; skip silently.
                 continue
 
+            # Structural flags. Integer sections check against the
+            # definitions/exemption sets; decimal sections (extra_sections)
+            # default to operative unless overridden in the registry.
+            is_def = False
+            is_exempt = False
+            try:
+                sec_int = int(sec_str)
+                is_def = sec_int in chapter.definitions_sections
+                is_exempt = sec_int in chapter.exemption_sections
+            except ValueError:
+                # Decimal-numbered section (e.g., "226.8"). Default to operative.
+                pass
+
             yield RawDocument(
                 source_id=self.source_id,
                 source_category="primary_statute",
@@ -166,12 +250,9 @@ class CaliforniaSource(Source):
                 code=chapter.code_bluebook,
                 chapter_id=chapter.chapter_label,
                 section=sec_str,
-                is_definitions_section=(sec_num in chapter.definitions_sections),
-                is_exemption_section=(sec_num in chapter.exemption_sections),
-                is_operative_section=(
-                    sec_num not in chapter.definitions_sections
-                    and sec_num not in chapter.exemption_sections
-                ),
+                is_definitions_section=is_def,
+                is_exemption_section=is_exempt,
+                is_operative_section=(not is_def and not is_exempt),
                 raw_html=html,
                 current_through=date.today(),   # TODO: parse leginfo's "current as of" footer
             )
