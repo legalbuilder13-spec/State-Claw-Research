@@ -11,12 +11,22 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
 import asyncpg
+from pgvector.asyncpg import register_vector
 
 from agentic_law_os_ingestion.config import get_config
 from agentic_law_os_ingestion.logging import get_logger
 
 _logger = get_logger(__name__)
 _pool: asyncpg.Pool | None = None
+
+
+async def _init_connection(conn: asyncpg.Connection) -> None:
+    """Per-connection init hook: register the pgvector codec.
+
+    Without this, asyncpg encodes/decodes the `vector(N)` column type as text
+    and INSERTs with a Python list fail with 'expected str, got list'.
+    """
+    await register_vector(conn)
 
 
 async def get_pool() -> asyncpg.Pool:
@@ -30,6 +40,7 @@ async def get_pool() -> asyncpg.Pool:
             min_size=2,
             max_size=cfg.ingestion_parallelism * 2,
             command_timeout=60,
+            init=_init_connection,
         )
         _logger.info("db.pool_created", min_size=2, max_size=cfg.ingestion_parallelism * 2)
     return _pool

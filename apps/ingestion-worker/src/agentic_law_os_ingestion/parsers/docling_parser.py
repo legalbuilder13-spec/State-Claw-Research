@@ -100,14 +100,40 @@ class DoclingParser:
             raise RuntimeError("beautifulsoup4 is required for HTML parsing") from exc
 
         soup = BeautifulSoup(html, "lxml")
-        for noise in soup(["script", "style", "nav", "footer", "header"]):
-            noise.decompose()
-        text = soup.get_text(separator="\n")
-        # Collapse runs of blank lines to single \n\n.
+        notes: list[str] = ["BeautifulSoup + lxml; Docling not used for HTML input"]
+
+        # Try known content containers in priority order. leginfo (CA), ilga (IL),
+        # and most state legislative sites wrap the operative text in one of these.
+        content: object | None = None
+        for selector in [
+            ("id", "codeLawSectionNoHead"),    # leginfo.legislature.ca.gov
+            ("id", "codes_displaysecblock"),    # leginfo fallback
+            ("id", "single_law_section"),       # leginfo fallback
+            ("id", "manylawsections"),          # leginfo expanded view
+            ("id", "ContentPlaceHolder1_TextContent"),  # ilga.gov pattern
+            ("class_", "contentBox"),
+            ("role", "main"),
+        ]:
+            kwargs = {selector[0]: selector[1]}
+            container = soup.find(**kwargs)
+            if container is not None:
+                content = container
+                notes.append(f"content extracted from {selector[0]}={selector[1]!r}")
+                break
+
+        if content is None:
+            # Fallback: strip obvious noise tags, then extract from body.
+            for noise in soup(["script", "style", "nav", "footer", "header", "aside", "form"]):
+                noise.decompose()
+            content = soup.find("body") or soup
+            notes.append("no known content container matched; fell back to body extraction")
+
+        text = content.get_text(separator="\n")  # type: ignore[union-attr]
+        # Collapse runs of blank lines and trim each line.
         lines = [line.strip() for line in text.split("\n")]
         compact = "\n".join(line for line in lines if line)
         return ParsedDocument(
             text=compact,
             parser_used="html_fallback",
-            parser_notes=["BeautifulSoup + lxml; Docling not used for HTML input"],
+            parser_notes=notes,
         )
