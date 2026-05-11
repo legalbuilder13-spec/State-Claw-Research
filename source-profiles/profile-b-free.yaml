@@ -1,0 +1,143 @@
+# Source Profile B — Lexis-free
+#
+# DEFAULT PROFILE. The v1 build targets this configuration. Profile A
+# (Lexis-enabled) is opt-in and may be added later as a configuration layer.
+#
+# Loaded by the legal-research plugin at run start when TaskSpec.source_profile = "B".
+# The allowlist R1 enforces is computed as the union of:
+#   primary_*_source values
+#   every entry in secondary_*_sources
+#   every citator_chain[*].id with enabled: true
+#
+# Per-jurisdiction overrides may live under `overrides` and merge over these defaults.
+
+profile: B
+description: "Lexis-free; ingested official corpus + free citator chain"
+default: true
+
+# ============================================================================
+# Primary sources — each is a single canonical retrieval path
+# ============================================================================
+
+primary_statute_source: local_corpus_state_official
+primary_regulation_source: local_corpus_state_admin
+primary_case_source: courtlistener_api
+
+# ============================================================================
+# Secondary sources — used when the primary source returns nothing
+# or when the analysis explicitly broadens
+# ============================================================================
+
+secondary_statute_sources:
+  - state_legislative_official_site
+  - justia
+  - cornell_lii
+  - openstates_api
+
+secondary_case_sources:
+  - cap_api
+  - google_scholar
+
+# ============================================================================
+# Citator chain — for case-law negative-treatment checks (R10)
+# Best-effort under Profile B; PRD §3 non-goal 6 warns this is not
+# litigation-grade Shepardizing. Surfaced as such on every deliverable.
+# ============================================================================
+
+citator_chain:
+  - id: courtlistener
+    name: "CourtListener Citations API"
+    cost: free
+    enabled: true
+    notes: "Primary free citator. Coverage strong post-2000 for federal and most state appellate courts."
+
+  - id: google_scholar
+    name: "Google Scholar 'How cited' (scraper)"
+    cost: free
+    enabled: true
+    notes: "Secondary. Best for cases CourtListener doesn't cover. Scraper-based; subject to rate limits."
+
+  - id: casetext_free
+    name: "Casetext free tier (CARA)"
+    cost: free_with_account
+    enabled: false
+    notes: "Opt-in; requires Casetext account. Limited free queries per month."
+
+  - id: vlex_fastcase
+    name: "vLex Fastcase (bar association access)"
+    cost: bar_association_membership
+    enabled: false
+    notes: "Opt-in per jurisdiction. Many state bars provide Fastcase access free to members."
+
+  - id: cap
+    name: "Caselaw Access Project / Harvard CAP API"
+    cost: free
+    enabled: true
+    notes: "Best for cases pre-2000. Older opinions not in CourtListener."
+
+# ============================================================================
+# Agency guidance — operator-configurable per PRD §11
+# ============================================================================
+
+agency_guidance:
+  categorization: orientation_only  # Profile B: orientation only (R14 blocks citation)
+  # Profile A typically moves to citation_eligible.
+
+# ============================================================================
+# Quote-check config — drives R5 HashEcho behavior
+# ============================================================================
+
+quote_check_config:
+  exact_substring_match: true
+  fail_closed: true
+  normalize:
+    whitespace: true       # Collapse runs of spaces, normalize newlines.
+    unicode_form: NFC      # Normalize curly quotes / accented characters before comparison.
+    smart_quote_to_ascii: true
+  case_sensitive: true
+  punctuation_sensitive: true
+
+# ============================================================================
+# Ingestion — drives the apps/ingestion-worker Python service
+# ============================================================================
+
+ingestion:
+  cadence: "weekly statute + admin-code refresh per jurisdiction in scope"
+  parser:
+    primary: docling      # Free, open-source; preserves § hierarchy and footnotes.
+    fallback: reducto     # Paid; used when Docling fails on a particular doc.
+  embedding:
+    provider: voyage
+    model: "voyage-law-2"
+    dimensions: 1024
+  reranker:
+    provider: voyage
+    model: "rerank-2"
+  jurisdictions_initially_supported:
+    - US-CA   # California (highest-priority — AB5 / Prong B)
+    - US-IL   # Illinois (Day & Temporary Labor Services Act)
+  # Additional jurisdictions added per-state via Source ABC in sources/base.py.
+
+# ============================================================================
+# Staleness thresholds — used by R10 CurrencyTag
+# (overrides _defs.schema.json defaults for this profile)
+# ============================================================================
+
+staleness_thresholds_days:
+  statute: 90
+  regulation: 30
+  case_law: 7        # Citator results — negative treatment can land overnight.
+  agency_guidance: 14
+  active_legislation: 1   # For questions tied to currently-pending bills.
+
+# ============================================================================
+# Optional per-jurisdiction overrides
+# ============================================================================
+
+overrides: {}
+# Example:
+# overrides:
+#   US-IL:
+#     citator_chain:
+#       - id: vlex_fastcase
+#         enabled: true   # ISBA grants Fastcase access

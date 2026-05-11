@@ -1,0 +1,104 @@
+# Source Profile A — Lexis-enabled
+#
+# OPT-IN. Adds live Lexis+ access (Brief Analysis, Shepardize, Doc Get)
+# on top of Profile B's baseline. Designed as a configuration LAYER over
+# Profile B rather than a replacement — every Profile B source remains
+# available; the Lexis sources are additions.
+#
+# Requires a Lexis+ seat (paid subscription, attorney bar admission verification
+# typically required). The KB MCP server's Lexis backend dispatches via Chrome
+# MCP or Playwright with stored credentials.
+#
+# Loaded by the legal-research plugin at run start when TaskSpec.source_profile = "A".
+
+profile: A
+description: "Lexis-enabled; adds Brief Analysis + Shepardize + Doc Get over Profile B baseline"
+default: false
+extends: B   # Inherits every Profile B value not overridden below.
+
+# ============================================================================
+# Primary sources — Lexis becomes the primary case source
+# ============================================================================
+
+primary_case_source: lexis_doc_get
+# Lexis Doc Get is the canonical retrieval for case opinions when available.
+# Profile B's courtlistener_api remains in the allowlist as a secondary source.
+
+# ============================================================================
+# Lexis-specific sources added to the allowlist
+# ============================================================================
+
+lexis_sources:
+  - id: lexis_brief_analysis
+    name: "Lexis+ Brief Analysis"
+    cost: lexis_subscription
+    enabled: true
+    description: "Submit a draft brief or research question; returns suggested authorities, similar cases, and counter-arguments."
+
+  - id: lexis_shepards
+    name: "Lexis+ Shepardize"
+    cost: lexis_subscription
+    enabled: true
+    description: "Litigation-grade citator. Replaces Profile B's free citator chain for case-law negative-treatment checks."
+
+  - id: lexis_doc_get
+    name: "Lexis+ Doc Get"
+    cost: lexis_subscription
+    enabled: true
+    description: "Retrieve specific case opinions, statutes, or regulations by Lexis citation."
+
+  - id: lexis_total_litigator
+    name: "Lexis+ Total Litigator (Practice Pages)"
+    cost: lexis_subscription
+    enabled: false
+    description: "Practice-area guides. Opt-in per practice area."
+
+# ============================================================================
+# Citator chain — Shepards replaces the free chain as primary
+# ============================================================================
+
+citator_chain:
+  - id: lexis_shepards
+    name: "Lexis+ Shepardize"
+    cost: lexis_subscription
+    enabled: true
+
+  # Profile B's free chain remains as secondary fallback:
+  - id: courtlistener
+    enabled: true
+
+  - id: google_scholar
+    enabled: true
+
+  - id: cap
+    enabled: true
+
+# ============================================================================
+# Agency guidance — Profile A elevates to citation_eligible
+# ============================================================================
+
+agency_guidance:
+  categorization: citation_eligible   # Lexis provides curated agency guidance with editorial weight.
+
+# ============================================================================
+# Ingestion — same as Profile B; Lexis is a live API, not corpus-ingested
+# ============================================================================
+
+# (Profile A inherits Profile B's `ingestion` block via `extends: B`.)
+
+# ============================================================================
+# Lexis access configuration
+# ============================================================================
+
+lexis_access:
+  auth_method: chrome_mcp_session   # Persisted Chrome session with logged-in Lexis user
+  # Alternative: playwright_credentials (stores Lexis username/password in Doppler/Infisical)
+  rate_limit_qps: 1                 # Lexis rate-limits aggressive automation.
+  timeout_ms: 30000                 # Some Lexis queries are slow.
+  fallback_to_profile_b_on_failure: true   # If Lexis is down, automatically fall back to Profile B for the affected sub-query.
+
+# ============================================================================
+# Per-jurisdiction overrides
+# ============================================================================
+
+overrides: {}
