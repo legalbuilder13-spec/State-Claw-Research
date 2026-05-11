@@ -1,0 +1,68 @@
+[project]
+name = "agentic-law-os-ingestion"
+version = "0.1.0"
+description = "Statute and admin-code ingestion worker for Agentic-Law-OS (legal-research fork of OpenClaw)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+dependencies = [
+    # Document parsing
+    "docling>=2.0",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+
+    # Embeddings + reranking
+    "voyageai>=0.2.4",
+
+    # Database
+    "asyncpg>=0.30",
+    "pgvector>=0.3.6",
+
+    # Web scraping (for state legislative sites)
+    "playwright>=1.49",
+    "httpx[http2]>=0.27",
+
+    # CLI + config + logging
+    "typer>=0.15",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "structlog>=24.4",
+    "PyYAML>=6.0",
+    "python-ulid>=3.0",
+]
+
+[project.scripts]
+agentic-law-os-ingestion = "agentic_law_os_ingestion.cli:app"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.7",
+    "mypy>=1.13",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentic_law_os_ingestion"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "UP", "C4", "ASYNC", "SIM"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
