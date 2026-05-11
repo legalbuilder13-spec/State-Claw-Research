@@ -1,0 +1,22 @@
+{
+  "id": "legal-spike",
+  "activation": {
+    "onStartup": true
+  },
+  "enabledByDefault": true,
+  "name": "Legal Spike",
+  "description": "Phase 0 (Agentic-Law-OS) verification probe. Registers a single trivial echo tool to prove the plugin SDK + Codex tool-calling path works end-to-end before authoring the real legal-research plugin pack.",
+  "contracts": {
+    "tools": ["legal_spike_echo"]
+  },
+  "toolMetadata": {
+    "legal_spike_echo": {
+      "optional": false
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

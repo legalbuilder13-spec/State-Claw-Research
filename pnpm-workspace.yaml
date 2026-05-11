@@ -4,6 +4,13 @@ packages:
   - packages/*
   - extensions/*
 
+# Allow exotic (git-URL) subdeps. OpenClaw's CI runs --frozen-lockfile which
+# bypasses this check; in our fork we re-resolve when adding workspace members
+# (e.g. extensions/legal-spike) so we have to explicitly permit them. The
+# upstream lockfile already contains the libsignal git resolution baileys
+# requires; this setting just stops a fresh resolve from rejecting it.
+blockExoticSubdeps: false
+
 minimumReleaseAge: 2880
 
 minimumReleaseAgeExclude:

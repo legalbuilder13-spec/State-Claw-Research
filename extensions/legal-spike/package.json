@@ -1,0 +1,18 @@
+{
+  "name": "@openclaw/legal-spike",
+  "version": "2026.5.10-beta.1",
+  "private": true,
+  "description": "Phase 0 (Agentic-Law-OS) verification probe — registers a trivial echo tool to confirm OpenClaw's plugin SDK + Codex tool-calling pipeline works before authoring the real legal-research pack.",
+  "type": "module",
+  "dependencies": {
+    "typebox": "1.1.38"
+  },
+  "devDependencies": {
+    "@openclaw/plugin-sdk": "workspace:*"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
