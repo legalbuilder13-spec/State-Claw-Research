@@ -1,0 +1,28 @@
+{
+  "name": "@agentic-law-os/mcp-kb",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Knowledge-base MCP server exposing kb.* tools backed by the local statute + regulation + case corpus.",
+  "type": "module",
+  "bin": {
+    "agentic-law-os-mcp-kb": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "dev": "node --import tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "node --import tsx --test 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "pg": "^8.13.1",
+    "pgvector": "^0.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.3"
+  }
+}

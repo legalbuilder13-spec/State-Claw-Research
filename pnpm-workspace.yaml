@@ -3,6 +3,7 @@ packages:
   - ui
   - packages/*
   - extensions/*
+  - apps/mcp-kb
 
 # Allow exotic (git-URL) subdeps. OpenClaw's CI runs --frozen-lockfile which
 # bypasses this check; in our fork we re-resolve when adding workspace members
