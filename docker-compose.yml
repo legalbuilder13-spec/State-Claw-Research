@@ -84,6 +84,32 @@ services:
       retries: 5
       start_period: 20s
 
+  # ----------------------------------------------------------------------------
+  # Agentic-Law-OS layer
+  # ----------------------------------------------------------------------------
+
+  # Local Postgres with pgvector for development of the legal-research layer.
+  # Production uses Railway's managed Postgres plugin with the same image base.
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agentic-law-os-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-agentic_law_os}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - agentic-law-os-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-agentic_law_os}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
   openclaw-cli:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
     network_mode: "service:openclaw-gateway"
@@ -118,3 +144,7 @@ services:
     entrypoint: ["node", "dist/index.js"]
     depends_on:
       - openclaw-gateway
+
+volumes:
+  agentic-law-os-postgres-data:
+    name: agentic-law-os-postgres-data
