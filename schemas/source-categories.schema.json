@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/source-categories.schema.json",
+  "title": "Source Categories",
+  "description": "Enumerations of citation-eligible vs orientation-only source kinds, plus the citation-token regex catalog the R4 preprocessor uses. This file is both a schema (validates the runtime catalog) and the source of truth for the enums other schemas reference.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "citation_eligible", "orientation_only", "citation_token_patterns"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the categories catalog. Bumped when categories are added/removed/recategorized."
+    },
+    "citation_eligible": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "primary_statute",
+          "primary_regulation",
+          "case_law",
+          "secondary_treatise"
+        ]
+      },
+      "minItems": 1,
+      "description": "Source kinds that may appear in deliverable.cites[]. R14 rejects any cite whose kind is not in this list."
+    },
+    "orientation_only": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "law_firm_blog",
+          "news_article",
+          "vendor_blog",
+          "wikipedia",
+          "ncsl_summary",
+          "agency_guidance",
+          "index_only",
+          "treatise_excerpt_unranked",
+          "internal_memo_prior"
+        ]
+      },
+      "description": "Source kinds permitted in deliverable.references[] but never in cites[]. Operator may move agency_guidance to citation_eligible by overriding via source-profiles/profile-{a,b}.yaml — see PRD §11."
+    },
+    "citation_token_patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pattern", "description"],
+        "properties": {
+          "pattern":     { "type": "string", "description": "ECMAScript-flavor regex. The R4 preprocessor uses these to detect citation tokens that look like quotation candidates but aren't (e.g., '§ 2775(b)(1)(A)')." },
+          "description": { "type": "string" }
+        }
+      },
+      "default": [
+        { "pattern": "§\\s*\\d+(\\.\\d+)?(\\([a-z0-9]+\\))*",       "description": "U.S. and state statutory section marker, with subdivisions (e.g., § 2775(b)(1)(A))." },
+        { "pattern": "\\d+\\s+U\\.?S\\.?C\\.?\\s+§?\\s*\\d+",        "description": "US Code: 29 USC 201 or 29 U.S.C. § 201." },
+        { "pattern": "\\d+\\s+C\\.?F\\.?R\\.?\\s+§?\\s*\\d+(\\.\\d+)?", "description": "CFR: 29 CFR 541 or 29 C.F.R. § 541.100." },
+        { "pattern": "\\d+\\s+ILCS\\s+\\d+(/\\d+(\\.\\d+)?)?",       "description": "Illinois Compiled Statutes: 820 ILCS 175/30." },
+        { "pattern": "(Cal|Mass|N\\.J|Minn|Ill)\\.\\s+(Lab|Bus|Civ|Penal|Gov|Welf|Lab\\.\\s*&\\s*Indus|Pub|Health|Educ|Veh|Ins)\\.?\\s+Code\\s+§\\s*\\d+", "description": "State code citations (CA Lab. Code § 2775; Mass. Gen. Laws ch. 149 § 148B)." }
+      ],
+      "description": "Default catalog ships with the system; per-jurisdiction additions live in `source-profiles/profile-{a,b}.yaml` under `citation_token_patterns_extra`."
+    }
+  }
+}

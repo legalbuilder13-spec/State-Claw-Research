@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/claim-ledger.schema.json",
+  "title": "Claim Ledger",
+  "description": "Append-only run-level ledger maintained by the orchestrator. Every claim emitted by any sub-agent is appended here with a hash-chain link, producing an immutable audit trail. The head hash is periodically anchored to a separate R2 bucket for tamper detection.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "task_spec_id", "started_at", "entries", "head_hash"],
+  "properties": {
+    "id":            { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "task_spec_id":  { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "started_at":    { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" },
+    "ended_at":      { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp", "description": "Set when the deliverable is rendered or the run is aborted. Open ledgers (no ended_at) indicate in-flight runs." },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["position", "kind", "ts", "payload", "prev_hash", "this_hash"],
+        "properties": {
+          "position":  { "type": "integer", "minimum": 0, "description": "0-indexed. Strictly monotonic — no gaps, no out-of-order appends." },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "claim_added",
+              "claim_revised",
+              "claim_stripped",
+              "retrieval_logged",
+              "tool_call_blocked",
+              "verifier_result",
+              "critic_result",
+              "confidence_result",
+              "classification_result",
+              "completeness_result",
+              "warning_added",
+              "rule_violation",
+              "revise_dispatched",
+              "subagent_dispatched",
+              "subagent_completed",
+              "deliverable_rendered",
+              "delivery_sent"
+            ],
+            "description": "Event type. Every kind has a corresponding payload shape; the schema does not enforce per-kind payload shapes (those are documented in plugin code) to keep the ledger schema fast to validate."
+          },
+          "ts":        { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" },
+          "actor": {
+            "type": "string",
+            "enum": ["orchestrator", "drafter", "verifier", "critic", "confidence", "classification", "renderer", "statute", "regulation", "case", "ingestion_worker", "system"],
+            "description": "Which sub-agent or system component appended this entry."
+          },
+          "payload": {
+            "type": "object",
+            "description": "Event-specific payload. Shape varies by kind; not constrained at this schema level."
+          },
+          "prev_hash": {
+            "$ref": "_defs.schema.json#/$defs/sha256Prefixed",
+            "description": "Hash of the previous entry. For position=0, the value is 'sha256:0000...0000' (32 zero bytes), reserved for genesis."
+          },
+          "this_hash": {
+            "$ref": "_defs.schema.json#/$defs/sha256Prefixed",
+            "description": "SHA-256(prev_hash || canonical_json(position, kind, ts, actor, payload)). Recomputable from prior entries; mismatch indicates tampering."
+          }
+        }
+      },
+      "description": "Append-only. Validation rejects any operation that mutates an existing entry."
+    },
+    "head_hash": {
+      "$ref": "_defs.schema.json#/$defs/sha256Prefixed",
+      "description": "Hash of the most recent entry. Used as the anchor value when the ledger is periodically snapshotted to an external R2 bucket for tamper resistance."
+    },
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "external_bucket": { "type": "string", "description": "R2 bucket name where head_hash snapshots are stored." },
+        "anchored_at":     { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" },
+        "snapshot_key":    { "type": "string", "description": "S3-style key of the snapshot object." }
+      },
+      "description": "Optional. Most ledgers are anchored on a periodic schedule rather than per-event."
+    }
+  }
+}

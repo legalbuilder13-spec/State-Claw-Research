@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/classification-output.schema.json",
+  "title": "Classification Output",
+  "description": "R12-compliant classification record produced by the Classification sub-agent. Maps every category in company-context/risk-taxonomy.yaml to a status (flagged or cleared) with a one-sentence rationale. Every category MUST appear — missing categories fail R12.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "claim_ledger_id", "computed_at", "taxonomy_version", "categories"],
+  "properties": {
+    "id":              { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "claim_ledger_id": { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "computed_at":     { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" },
+    "taxonomy_version": {
+      "$ref": "_defs.schema.json#/$defs/sha256Hex",
+      "description": "Content hash of the risk-taxonomy.yaml at the time of classification. Pinning the version makes the deliverable's classification reproducible even if the taxonomy is later updated."
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "rationale"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["flagged", "cleared"],
+            "description": "flagged: the deliverable's subject implicates this risk category. cleared: it does not."
+          },
+          "severity": {
+            "$ref": "_defs.schema.json#/$defs/severityLevel",
+            "description": "Required when status=flagged. Drives Slack-response template's color and ordering: critical first, then high, medium, low."
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10,
+            "description": "One-sentence explanation. For flagged: how the subject implicates this risk. For cleared: why this risk doesn't apply to this subject. Empty or generic rationales (e.g., 'N/A') fail validation."
+          },
+          "cite_refs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional doc_ids supporting the classification (e.g., for a flagged abc_test category, cite ca-lab-2775)."
+          }
+        },
+        "if": { "properties": { "status": { "const": "flagged" } } },
+        "then": { "required": ["status", "severity", "rationale"] }
+      },
+      "description": "Keys are top-level category names from risk-taxonomy.yaml (e.g., 'abc_test', 'common_law_agency', 'joint_employer_flsa', 'staffing_agency_statutes'). Every key in the YAML must appear here."
+    },
+    "completeness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taxonomy_category_count", "covered_count", "missing_categories"],
+      "properties": {
+        "taxonomy_category_count":  { "type": "integer", "minimum": 0 },
+        "covered_count":            { "type": "integer", "minimum": 0 },
+        "missing_categories":       { "type": "array", "items": { "type": "string" }, "description": "Empty when R12 passes. Populated when the orchestrator runs Classification with a partial result (used during revise loops)." }
+      }
+    }
+  }
+}

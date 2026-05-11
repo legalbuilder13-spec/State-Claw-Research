@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/deliverable.schema.json",
+  "title": "Deliverable",
+  "description": "The final renderable artifact emitted by the Renderer immediately before channel delivery. Aggregates every sub-agent's output into the structured payload a channel adapter renders. This is the schema that gates `message_sending` — failures here block delivery.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "task_spec_id",
+    "claim_ledger_id",
+    "stamp",
+    "verbatim_question",
+    "bottom_line",
+    "analysis",
+    "cites",
+    "classification_overlay",
+    "confidence",
+    "completeness",
+    "rendered_at",
+    "delivery_channel"
+  ],
+  "properties": {
+    "id":              { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "task_spec_id":    { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "claim_ledger_id": { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "stamp": {
+      "type": "string",
+      "enum": ["DRAFT FOR COUNSEL REVIEW", "RESEARCH INCOMPLETE — DO NOT RELY ON THIS DRAFT"],
+      "description": "Mandatory banner on every deliverable. PRD §3 non-goal 2 — outputs are never client-facing without human review."
+    },
+    "verbatim_question": {
+      "type": "string",
+      "description": "Original message, echoed at the top of every deliverable. Sourced from TaskSpec.verbatim_question."
+    },
+    "bottom_line": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 2000,
+      "description": "One- or two-sentence answer. Required at the top of every deliverable (Slack-response template puts this first; memo template puts it in the executive summary). Hedge density in this field is held to a tighter W3 threshold than the analysis body."
+    },
+    "analysis": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The full analytical prose. Composed by the Renderer from the ordered claims. Contains paraphrased text but no raw quotation marks — quoted spans are rendered from the quotes[] array."
+    },
+    "claims": {
+      "type": "array",
+      "items": { "$ref": "claim.schema.json" },
+      "description": "Ordered list of claims that produced the analysis. Used for audit / click-through; not always rendered to the channel adapter."
+    },
+    "cites": {
+      "type": "array",
+      "items": { "$ref": "citation.schema.json" },
+      "minItems": 1,
+      "description": "Pinpoint citations supporting the analysis. R14 enforces citation_eligible kinds only."
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "title", "consulted_for"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["law_firm_blog", "news_article", "vendor_blog", "wikipedia", "ncsl_summary", "agency_guidance", "index_only", "treatise_excerpt_unranked", "internal_memo_prior"]
+          },
+          "title":          { "type": "string" },
+          "url":            { "type": "string", "format": "uri" },
+          "consulted_for":  { "type": "string", "minLength": 10, "description": "What this orientation source was consulted for. R14 surfaces this in the deliverable's 'Orientation consulted' block, clearly labeled as non-authority." }
+        }
+      },
+      "default": [],
+      "description": "Orientation-only sources consulted. Never appears in cites[]; appears in a separate 'Orientation consulted' rendering block."
+    },
+    "quotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "anchor", "claim_id"],
+        "properties": {
+          "text":     { "type": "string", "minLength": 1 },
+          "anchor":   { "$ref": "_defs.schema.json#/$defs/spanAnchor" },
+          "claim_id": { "$ref": "_defs.schema.json#/$defs/ulid", "description": "Reference to the claim this quote appears within." }
+        }
+      },
+      "default": [],
+      "description": "All anchored quoted spans in the deliverable. R4 + R5 enforce."
+    },
+    "verify_flags": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "topic", "location_in_draft", "why_flagged", "suggested_verification"],
+        "properties": {
+          "id":                      { "$ref": "_defs.schema.json#/$defs/ulid" },
+          "topic":                   { "type": "string", "minLength": 5 },
+          "location_in_draft":       { "type": "string", "minLength": 5, "description": "Where in the draft the flag applies, e.g., 'paragraph 3, sentence 2'." },
+          "why_flagged":             { "type": "string", "minLength": 50, "description": "Concrete uncertainty. Generic hedges fail this minLength." },
+          "suggested_verification":  { "type": "string", "minLength": 30, "description": "Specific next step (a search query, a doc to pull). Generic 'have someone check' fails." }
+        }
+      },
+      "default": [],
+      "description": "R13 VerifyFlagCap: maxItems=3 enforced by schema."
+    },
+    "classification_overlay": { "$ref": "classification-output.schema.json", "description": "R12 — full per-category overlay." },
+    "coverage_matrix": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "retrievals"],
+        "properties": {
+          "status":      { "type": "string", "enum": ["complete", "partial", "failed"] },
+          "retrievals":  { "type": "integer", "minimum": 0 },
+          "gaps":        { "type": "array", "items": { "type": "string" } },
+          "current_through": { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" }
+        }
+      },
+      "description": "W1 PartialAcrossStates. Required when TaskSpec.jurisdictions.length > 1. Keys are jurisdiction codes; values describe per-state coverage."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule_id", "message"],
+        "properties": {
+          "rule_id":   { "type": "string", "enum": ["W1", "W2", "W3", "W4"] },
+          "message":   { "type": "string" },
+          "claim_id":  { "$ref": "_defs.schema.json#/$defs/ulid" },
+          "details":   { "type": "object", "description": "Rule-specific payload, e.g., W3 includes hedge counts; W2 includes prev/curr paraphrase + source." }
+        }
+      },
+      "default": []
+    },
+    "canon_conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_id", "question", "canons_considered", "applied", "rationale"],
+        "properties": {
+          "claim_id":          { "$ref": "_defs.schema.json#/$defs/ulid" },
+          "question":          { "type": "string" },
+          "canons_considered": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["canon", "outcome"],
+              "properties": {
+                "canon":   { "type": "string" },
+                "outcome": { "type": "string" }
+              }
+            }
+          },
+          "applied":      { "type": "string" },
+          "rationale":    { "type": "string", "minLength": 30 }
+        }
+      },
+      "default": [],
+      "description": "W4 CanonConflictDeclared. Explicit declarations when 2+ canons fire on the same claim and produce different outcomes."
+    },
+    "confidence": { "$ref": "confidence-output.schema.json", "description": "R11 LowConfidenceGate. When aggregate=LOW, this deliverable's stamp is 'RESEARCH INCOMPLETE'." },
+    "completeness": { "$ref": "completeness-output.schema.json", "description": "R15 CompletenessGate." },
+    "rendered_at":     { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" },
+    "delivery_channel":{ "$ref": "_defs.schema.json#/$defs/deliveryChannel" },
+    "delivery_metadata": {
+      "type": "object",
+      "description": "Channel-specific metadata. For slack: { channel_id, thread_ts, message_id }. For web: { session_id }. Not validated structurally — channel adapter owns the shape."
+    },
+    "render_options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_audit_trail":   { "type": "boolean", "default": false, "description": "When true, the Renderer attaches a link to the claim ledger and audit chain in the rendered output." },
+        "include_orientation":   { "type": "boolean", "default": true, "description": "When false, references[] is omitted from the rendered output (but still logged in the audit chain)." },
+        "citation_style":        { "type": "string", "enum": ["bluebook", "alwd", "california_style_manual"], "default": "bluebook" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "When stamp is 'RESEARCH INCOMPLETE', confidence.aggregate must be LOW. Asymmetric — a LOW confidence may also be delivered with the normal stamp when explicitly overridden in some Phase 4+ scenarios (not v1).",
+      "if": { "properties": { "stamp": { "const": "RESEARCH INCOMPLETE — DO NOT RELY ON THIS DRAFT" } } },
+      "then": { "properties": { "confidence": { "properties": { "aggregate": { "const": "LOW" } } } } }
+    }
+  ]
+}

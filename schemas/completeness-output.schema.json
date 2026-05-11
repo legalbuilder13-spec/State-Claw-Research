@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/completeness-output.schema.json",
+  "title": "Completeness Output",
+  "description": "R15 CompletenessGate's 7-criterion check result. Produced by the orchestrator after every sub-agent has completed and before the Renderer fires. Each criterion is pass/fail/not_applicable with supporting evidence; aggregate is complete/incomplete.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "claim_ledger_id", "computed_at", "criteria", "aggregate"],
+  "properties": {
+    "id":              { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "claim_ledger_id": { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "computed_at":     { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" },
+    "criteria": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["definitions", "operative", "exemptions", "regulations", "cross_refs", "currency", "classification"],
+      "properties": {
+        "definitions":    { "$ref": "#/$defs/criterion", "description": "R9. PASS if every chapter under analysis has its Definitions section retrieved or marked inline. FAIL if any chapter's Definitions are missing." },
+        "operative":      { "$ref": "#/$defs/criterion", "description": "R3. PASS if every assertion claim has ≥1 retrieval-backed cite." },
+        "exemptions":     { "$ref": "#/$defs/criterion", "description": "PASS when relies_on_exemption=true claims have the relevant exemption provisions in retrieval_log. NOT_APPLICABLE when no claim relies on an exemption." },
+        "regulations":    { "$ref": "#/$defs/criterion", "description": "R7. PASS if every delegation clause has a resolved implementing reg or explicit delegation_unresolved annotation. NOT_APPLICABLE if no delegations flagged." },
+        "cross_refs":     { "$ref": "#/$defs/criterion", "description": "R8. PASS if every cross-reference is retrieved or explicitly skipped with reason. FAIL if any silent omission." },
+        "currency":       { "$ref": "#/$defs/criterion", "description": "R10. PASS if every cited source is within threshold OR explicitly annotated. FAIL on stale_blocking." },
+        "classification": { "$ref": "#/$defs/criterion", "description": "R12. PASS if every taxonomy category in classification_overlay is flagged or cleared with rationale." }
+      }
+    },
+    "aggregate": {
+      "type": "string",
+      "enum": ["complete", "incomplete"],
+      "description": "complete: all applicable criteria PASS. incomplete: any criterion FAIL. NOT_APPLICABLE criteria do not affect the aggregate."
+    },
+    "incomplete_response_recommendation": {
+      "type": "object",
+      "description": "When aggregate=incomplete, the orchestrator suggests next steps to resolve. Renderer uses this in place of the normal deliverable.",
+      "properties": {
+        "failing_criteria": { "type": "array", "items": { "type": "string" }, "description": "Keys of FAIL criteria." },
+        "recommended_action": {
+          "type": "string",
+          "enum": ["re_ingest", "retrieve_missing", "add_jurisdiction", "amend_task_spec", "manual_research", "rerun"],
+          "description": "Single recommended next step. The Renderer renders this as the bottom-line instruction in the incomplete-notice."
+        },
+        "instructions": { "type": "string", "description": "Specific human-readable instructions, e.g., 'Run `agentic-law-os-ingestion ingest-statutes --jurisdiction US-IL --force-refresh` and re-submit.'" }
+      }
+    }
+  },
+  "$defs": {
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status":              { "type": "string", "enum": ["pass", "fail", "not_applicable"] },
+        "reason":              { "type": "string", "description": "Required when status != pass. Empty for pass." },
+        "supporting_doc_ids":  { "type": "array", "items": { "$ref": "_defs.schema.json#/$defs/docId" }, "description": "Retrieved doc_ids that drive this criterion's status (positive evidence for pass, missing-expected for fail)." }
+      }
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/citation.schema.json",
+  "title": "Citation",
+  "description": "A single citation in a deliverable's cites[] array. Discriminated union by `kind`. R6 PinpointCite requires per-kind fields; R14 NoLawFirmCitation restricts `kind` to citation_eligible values defined in source-categories.schema.json.",
+  "type": "object",
+  "required": ["kind", "doc_id", "jurisdiction"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["primary_statute", "primary_regulation", "case_law", "secondary_treatise"],
+      "description": "R14 enforcement: only citation_eligible kinds permitted. orientation_only kinds belong in deliverable.references[], not here."
+    },
+    "doc_id": {
+      "$ref": "_defs.schema.json#/$defs/docId",
+      "description": "Typed doc_id pointing at the underlying retrieval_log entry. R3 NoMemoryStatutes requires this doc_id to be present in retrieval_log this session."
+    },
+    "jurisdiction": {
+      "$ref": "_defs.schema.json#/$defs/jurisdictionCode",
+      "description": "ISO-3166-2-style. R2 JurisdictionLock requires this to be in TaskSpec.jurisdictions."
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional canonical URL of the cited source (e.g., leginfo.legislature.ca.gov page). Renderer uses this for click-through evidence cards."
+    },
+    "rendered": {
+      "type": "string",
+      "description": "Pre-formatted display string (e.g., 'Cal. Lab. Code § 2775(b)(1)(A) (2019)'). Renderer fills this from per-kind fields below; Drafter may leave it empty."
+    },
+    "relies_on_holding": {
+      "type": "boolean",
+      "default": false,
+      "description": "When kind=case_law and this is true, pinpoint_page is required. Set true when the claim's force depends on the case's specific reasoning."
+    }
+  },
+  "oneOf": [
+    {
+      "title": "primary_statute",
+      "type": "object",
+      "properties": {
+        "kind":        { "const": "primary_statute" },
+        "code":        { "type": "string", "minLength": 1, "description": "Bluebook code abbreviation, e.g., 'Lab.' (California Labor Code), 'Bus. & Prof.' (CA Business & Professions Code), 'Gen. Laws ch. 149' (Mass.)." },
+        "section":     { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$", "description": "Section number." },
+        "subdivision": { "type": "string", "description": "Optional subdivision letter/number tuple, e.g., '(b)(1)(A)'. Required when the asserted text references a subdivision." },
+        "year_enacted":{ "type": "integer", "minimum": 1800, "maximum": 2100, "description": "Optional year of enactment for the cited version." }
+      },
+      "required": ["kind", "code", "section"]
+    },
+    {
+      "title": "primary_regulation",
+      "type": "object",
+      "properties": {
+        "kind":        { "const": "primary_regulation" },
+        "title":       { "type": "string", "description": "Regulation title number, e.g., '29' (Labor), '26' (Tax), or state CCR title number." },
+        "part":        { "type": "string", "description": "Part within the title." },
+        "section":     { "type": "string", "description": "Section within the part." },
+        "subdivision": { "type": "string", "description": "Optional subdivision." }
+      },
+      "required": ["kind", "title", "part", "section"]
+    },
+    {
+      "title": "case_law",
+      "type": "object",
+      "properties": {
+        "kind":          { "const": "case_law" },
+        "name":          { "type": "string", "minLength": 1, "description": "Full case name, e.g., 'Dynamex Operations W. v. Superior Court'." },
+        "reporter":      { "type": "string", "description": "Reporter abbreviation, e.g., 'Cal. 5th', 'F.3d', 'U.S.'." },
+        "volume":        { "type": "string", "pattern": "^[0-9]+$" },
+        "first_page":    { "type": "string", "pattern": "^[0-9]+$" },
+        "court":         { "type": "string", "description": "Court abbreviation, e.g., 'Cal.', '9th Cir.', 'U.S.'." },
+        "year":          { "type": "integer", "minimum": 1800, "maximum": 2100 },
+        "pinpoint_page": { "type": "string", "pattern": "^[0-9]+(-[0-9]+)?$", "description": "Required when relies_on_holding=true. May be a range." },
+        "parenthetical": { "type": "string", "description": "Optional Bluebook parenthetical, e.g., '(en banc)'." }
+      },
+      "required": ["kind", "name", "reporter", "volume", "first_page", "court", "year"]
+    },
+    {
+      "title": "secondary_treatise",
+      "type": "object",
+      "properties": {
+        "kind":            { "const": "secondary_treatise" },
+        "author":          { "type": "string", "minLength": 1, "description": "Author/institutional author, e.g., 'Restatement (Third) of Employment Law'." },
+        "title":           { "type": "string", "description": "Treatise title; omit when author IS the title (Restatements)." },
+        "edition_or_year": { "type": "string", "description": "Edition number or year, e.g., '3d ed. 2024'." },
+        "section_or_page": { "type": "string", "description": "Pinpoint section or page reference." }
+      },
+      "required": ["kind", "author", "edition_or_year"]
+    }
+  ]
+}

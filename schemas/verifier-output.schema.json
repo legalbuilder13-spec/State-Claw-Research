@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/verifier-output.schema.json",
+  "title": "Verifier Output",
+  "description": "Structured artifact produced by the Verifier sub-agent after re-fetching every anchored span and exact-matching against the source. R5 HashEcho is the originating rule; R10 CurrencyTag piggybacks on the same fetch to compute staleness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "claim_ledger_id", "verified_at", "anchors", "summary"],
+  "properties": {
+    "id":              { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "claim_ledger_id": { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "verified_at":     { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["anchor", "asserted_text", "status"],
+        "properties": {
+          "anchor":        { "$ref": "_defs.schema.json#/$defs/spanAnchor" },
+          "asserted_text": { "type": "string", "description": "Text the Drafter asserted (the quote content)." },
+          "live_text":     { "type": "string", "description": "Text returned by kb_span_get_by_hash. Empty when status=hash_not_found." },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "hash_not_found", "text_mismatch", "corpus_drift"],
+            "description": "pass: clean. hash_not_found: anchor.hash not in retrieval_log. text_mismatch: anchor resolves but asserted_text is not a substring of live_text. corpus_drift: hash resolves but live re-hash of the (doc_id, chars) differs (corpus was re-ingested mid-session)."
+          },
+          "reason":        { "type": "string", "description": "Human-readable explanation when status != pass." },
+          "live_hash":     { "$ref": "_defs.schema.json#/$defs/sha256Prefixed", "description": "When status=corpus_drift, the live hash of (doc_id, char_start, char_end) at verification time." },
+          "current_through": { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp", "description": "Source's current_through metadata at verification time (R10 input). Stale relative to TaskSpec.requires_fresh determines whether R10 fires." },
+          "staleness_status": {
+            "type": "string",
+            "enum": ["fresh", "stale_annotated", "stale_blocking"],
+            "description": "R10 verdict for this anchor. stale_annotated: over threshold but TaskSpec.requires_fresh=false (warning). stale_blocking: over threshold AND requires_fresh=true (blocks; triggers refresh)."
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "passed", "hash_not_found", "text_mismatch", "corpus_drift"],
+      "properties": {
+        "total":           { "type": "integer", "minimum": 0 },
+        "passed":          { "type": "integer", "minimum": 0 },
+        "hash_not_found":  { "type": "integer", "minimum": 0 },
+        "text_mismatch":   { "type": "integer", "minimum": 0 },
+        "corpus_drift":    { "type": "integer", "minimum": 0 },
+        "stale_annotated": { "type": "integer", "minimum": 0 },
+        "stale_blocking":  { "type": "integer", "minimum": 0 }
+      },
+      "description": "Counts for fast orchestrator dispatch decisions: any non-zero in hash_not_found / text_mismatch / stale_blocking triggers a revise loop or R10 refresh."
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Wall-clock time the Verifier spent. Tracked to surface performance regressions (target: <5s per deliverable typical case)."
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/claim.schema.json",
+  "title": "Claim",
+  "description": "Atomic legal claim emitted by the Drafter sub-agent. Every assertion in a deliverable is a claim. R3 NoMemoryStatutes requires assertion-kind claims to have ≥1 cite from retrieval_log; R4 QuotingRule requires every quoted span to be a structured anchor; R6 PinpointCite enforces per-kind citation completeness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "ledger_position", "kind", "text", "created_at"],
+  "properties": {
+    "id":              { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "ledger_position": { "type": "integer", "minimum": 0, "description": "0-indexed position in the claim ledger. Append-only; ledger_position uniquely orders claims within a run." },
+    "kind": {
+      "type": "string",
+      "enum": ["assertion", "transition", "definition", "interpretation", "conclusion"],
+      "description": "Discriminator. assertion: substantive legal claim (R3 applies). transition: connective text (R3 does NOT apply; no cites required). definition: presents a defined term from a Definitions section. interpretation: applies canons of construction or interprets language. conclusion: aggregates prior claims into a final answer."
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8000,
+      "description": "The claim's prose. Quoted spans within the text must be moved to quotes[] with anchors (R4); raw quotation marks in this string fail Drafter validation."
+    },
+    "created_at": { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" },
+    "cites": {
+      "type": "array",
+      "items": { "$ref": "citation.schema.json" },
+      "default": [],
+      "description": "Pinpoint citations supporting this claim. R3 requires assertion claims to have ≥1 cite. R14 limits kind to citation_eligible."
+    },
+    "quotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "anchor"],
+        "properties": {
+          "text":   { "type": "string", "minLength": 1, "description": "The exact quoted span as it appears in the source." },
+          "anchor": { "$ref": "_defs.schema.json#/$defs/spanAnchor" },
+          "render_as": {
+            "type": "string",
+            "enum": ["inline", "block", "italics", "emphasis"],
+            "default": "inline",
+            "description": "How the Renderer should display the quote. 'block' is for long quotes; 'italics'/'emphasis' for short scare quotes that should not appear in quotation marks at render time."
+          }
+        }
+      },
+      "default": [],
+      "description": "Anchored quotes used inside this claim's text. R4 + R5 enforce."
+    },
+    "relies_on_holding": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true and the claim has a case_law cite, R6 PinpointCite requires that cite to include pinpoint_page. Set by the Drafter when the claim's force depends on the case's specific reasoning rather than its general existence."
+    },
+    "relies_on_exemption": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, R15 CompletenessGate's exemption criterion is activated. Set by the Drafter when the analysis concludes the rule applies/doesn't apply because a statutory exemption was satisfied/not satisfied."
+    },
+    "relies_on_paraphrase": {
+      "type": "boolean",
+      "default": true,
+      "description": "True when the claim's substantive content is paraphrased from a source (not directly quoted). Default true because most claims paraphrase. False only when the claim is purely structural transition. Drives W2 ParaphraseDriftCheck."
+    },
+    "confidence": {
+      "$ref": "_defs.schema.json#/$defs/confidenceLevel",
+      "description": "Drafter's self-reported confidence in this specific claim. Aggregated by the Confidence sub-agent into the deliverable-level R11 rating."
+    },
+    "verify_flag_id": {
+      "$ref": "_defs.schema.json#/$defs/ulid",
+      "description": "Optional reference to a verify_flag in the deliverable's verify_flags[]. R13 caps total flags at 3 across the deliverable, regardless of how many claims reference flags."
+    },
+    "canon_applied": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "plain_meaning",
+          "expressio_unius_est_exclusio_alterius",
+          "ejusdem_generis",
+          "noscitur_a_sociis",
+          "constitutional_avoidance",
+          "rule_against_surplusage",
+          "remedial_statute_liberal_construction",
+          "statute_in_derogation_of_common_law_strict_construction",
+          "in_pari_materia",
+          "rule_of_lenity",
+          "expressio_unius_negated",
+          "absurdity_doctrine",
+          "presumption_against_extraterritorial_application",
+          "presumption_against_retroactivity",
+          "presumption_in_favor_of_judicial_review",
+          "deference_to_administrative_interpretation",
+          "departmental_construction_canon"
+        ]
+      },
+      "description": "Canons of construction applied to reach this claim. When 2+ canons fire and produce different outcomes, W4 CanonConflictDeclared requires the conflict be declared in deliverable.canon_conflicts[]."
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/task-spec.schema.json",
+  "title": "TaskSpec",
+  "description": "Typed JSON object emitted by Tier 1 Intake and frozen for the rest of the run. Locks jurisdictions, source profile, topic, output type, and company-context pointer. Every sub-agent reads this; the orchestrator binds its values into tool parameter schemas at run start.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "created_at",
+    "frozen_at",
+    "requester",
+    "verbatim_question",
+    "jurisdictions",
+    "topic",
+    "source_profile",
+    "company_context_ref",
+    "output_type"
+  ],
+  "properties": {
+    "id":         { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "created_at": { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp", "description": "Set when the requester's message lands in the intake." },
+    "frozen_at":  { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp", "description": "Set when Tier 1 finishes intake and dispatches to the orchestrator. After this, TaskSpec is immutable for the run." },
+    "requester": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["channel", "user_id"],
+      "properties": {
+        "channel":         { "$ref": "_defs.schema.json#/$defs/deliveryChannel" },
+        "user_id":         { "type": "string", "minLength": 1, "description": "Channel-native user identifier, e.g., Slack 'U07ABCDEF'." },
+        "display_name":    { "type": "string" },
+        "email":           { "type": "string", "format": "email" },
+        "raw_message_id":  { "type": "string", "description": "Channel-native message id (Slack ts, Discord snowflake, etc.)." }
+      }
+    },
+    "verbatim_question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16000,
+      "description": "Original message text, captured exactly as the requester wrote it (no paraphrase). Used by Renderer to echo the question at the top of every deliverable; used by Critic to detect drift between the answer and the original ask."
+    },
+    "jurisdictions": {
+      "type": "array",
+      "items": { "$ref": "_defs.schema.json#/$defs/jurisdictionCode" },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Locked jurisdictions for this run. R2 JurisdictionLock binds every KB tool's jurisdiction parameter enum to exactly this list."
+    },
+    "topic": {
+      "type": "string",
+      "enum": [
+        "worker_classification",
+        "licensing_staffing_agency",
+        "joint_employer",
+        "background_check_obligations",
+        "credentialing_requirements",
+        "wage_hour_compliance",
+        "marketplace_contractor_law",
+        "hipaa_baa",
+        "vendor_contract_review",
+        "marketing_classification_risk",
+        "policy_compliance_obligation",
+        "facility_policy_transmission",
+        "other"
+      ],
+      "description": "Topic taxonomy keyed to the company-context risk-vectors and skill catalog. 'other' is permitted but should be rare — every common topic should be enumerated."
+    },
+    "source_profile": {
+      "$ref": "_defs.schema.json#/$defs/sourceProfileId"
+    },
+    "company_context_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path":          { "type": "string", "description": "Path to the company-context pack, typically 'company-context/'." },
+        "version_hash":  { "$ref": "_defs.schema.json#/$defs/sha256Hex", "description": "Optional content-hash of the company-context pack at run start. Captured to make audit reproducible." }
+      }
+    },
+    "output_type": {
+      "type": "string",
+      "enum": ["slack_response", "memo", "chart", "research_trail", "incomplete_notice"],
+      "description": "Which template the Renderer will use. Determined at intake from channel + complexity. 'incomplete_notice' is only set by R11 / R15 (orchestrator-emitted, not requester-emitted)."
+    },
+    "requires_fresh": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, R10 CurrencyTag tightens the staleness threshold to source-specific minimums and the orchestrator triggers synchronous corpus refresh on stale hits. Set true for time-sensitive questions like 'is this bill currently in effect?'."
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "urgent"],
+      "default": "medium",
+      "description": "Routing hint to the orchestrator. Does not change rule enforcement; may change retrieval breadth and revise-loop budget."
+    },
+    "deadline": {
+      "$ref": "_defs.schema.json#/$defs/iso8601Timestamp",
+      "description": "Optional requester-supplied deadline. The orchestrator may downgrade depth (fewer revise loops) when approaching deadline."
+    },
+    "pre_flight_notes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Operator-supplied notes captured during Tier-1 intake (e.g., 'caller said this is for the Smith matter, prior memos in Notion at <url>'). Visible to sub-agents."
+    }
+  }
+}

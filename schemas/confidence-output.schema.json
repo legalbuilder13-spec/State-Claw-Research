@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-law-os/schemas/confidence-output.schema.json",
+  "title": "Confidence Output",
+  "description": "Rule-based confidence determination from the Confidence sub-agent. Implements R11 LowConfidenceGate's criteria table: every criterion gets a level + rationale; the aggregate is HIGH if all HIGH, MEDIUM if any MEDIUM and none LOW, LOW if any LOW.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "claim_ledger_id", "computed_at", "criteria", "aggregate"],
+  "properties": {
+    "id":              { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "claim_ledger_id": { "$ref": "_defs.schema.json#/$defs/ulid" },
+    "computed_at":     { "$ref": "_defs.schema.json#/$defs/iso8601Timestamp" },
+    "criteria": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "definitions_retrieved",
+        "operative_provisions_retrieved",
+        "cross_refs_resolved",
+        "delegations_resolved",
+        "currency_confirmed",
+        "verifier_passed",
+        "drafter_revise_count",
+        "verify_flags_count",
+        "classification_overlay_complete"
+      ],
+      "properties": {
+        "definitions_retrieved": {
+          "$ref": "#/$defs/criterion",
+          "description": "Per R9. HIGH if all chapters under analysis have Definitions retrieved or marked inline; MEDIUM if any inline-claim is suspect; LOW if any chapter's Definitions section is missing."
+        },
+        "operative_provisions_retrieved": {
+          "$ref": "#/$defs/criterion",
+          "description": "Per R3. HIGH if every assertion claim has ≥1 retrieval-backed cite; MEDIUM if ≥80% of claims backed; LOW if <80%."
+        },
+        "cross_refs_resolved": {
+          "$ref": "#/$defs/criterion",
+          "description": "Per R8. HIGH if all cross-refs resolved or explicitly skipped; MEDIUM if ≥1 unresolved; LOW if ≥3 unresolved."
+        },
+        "delegations_resolved": {
+          "$ref": "#/$defs/criterion",
+          "description": "Per R7. HIGH if no delegations or all resolved; MEDIUM if ≥1 with explicit reason; LOW if unresolved without reason."
+        },
+        "currency_confirmed": {
+          "$ref": "#/$defs/criterion",
+          "description": "Per R10. HIGH if all sources fresh; MEDIUM if some stale-annotated; LOW if stale_blocking and refresh failed."
+        },
+        "verifier_passed": {
+          "$ref": "#/$defs/criterion",
+          "description": "Per R5. HIGH if all anchors pass; MEDIUM if ≤1 minor mismatch resolved by revise; LOW if ≥2 unresolved mismatches."
+        },
+        "drafter_revise_count": {
+          "$ref": "#/$defs/criterion",
+          "description": "Internal quality signal. HIGH if 0-1; MEDIUM if 2; LOW if >2."
+        },
+        "verify_flags_count": {
+          "$ref": "#/$defs/criterion",
+          "description": "Per R13. HIGH if 0; MEDIUM if 1-2; LOW if ≥3 (R13 caps at 3; ≥3 is at-cap)."
+        },
+        "classification_overlay_complete": {
+          "$ref": "#/$defs/criterion",
+          "description": "Per R12. HIGH/MEDIUM if all categories addressed; LOW if missing categories."
+        }
+      }
+    },
+    "aggregate": {
+      "$ref": "_defs.schema.json#/$defs/confidenceLevel",
+      "description": "HIGH if every criterion HIGH. MEDIUM if any MEDIUM and none LOW. LOW if any LOW. Drives the R11 gate: LOW blocks delivery."
+    },
+    "incomplete_response_payload": {
+      "type": "object",
+      "description": "When aggregate=LOW, the Confidence sub-agent populates this with the structured 'research incomplete' content (verbatim question, what was retrieved, failing criteria, next-step recommendation). The Renderer renders this in place of the normal deliverable."
+    }
+  },
+  "$defs": {
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "rationale"],
+      "properties": {
+        "level":     { "$ref": "_defs.schema.json#/$defs/confidenceLevel" },
+        "rationale": { "type": "string", "minLength": 10, "description": "One-sentence explanation citing the specific signal (e.g., 'All 3 chapters have Definitions retrieved.', 'CA: complete; IL: 1 unresolved cross-ref to 820 ILCS 175 § 35; NJ: 0 retrievals.')." },
+        "evidence":  { "type": "array", "items": { "type": "string" }, "description": "Optional list of doc_ids or audit-chain event ids that support the level. Used for after-the-fact auditing." }
+      }
+    }
+  }
+}
