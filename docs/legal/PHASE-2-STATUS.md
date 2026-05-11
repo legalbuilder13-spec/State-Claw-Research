@@ -23,6 +23,28 @@
 | Typer CLI (`ingest-statutes`, `ingest-regulations`, `freshness`, `parse-pdf`) | ✓ shipped | [`.../cli.py`](../../apps/ingestion-worker/src/agentic_law_os_ingestion/cli.py) |
 | Phase 2 status doc | ✓ shipped | this file |
 
+## Local schema validation (2026-05-11)
+
+The migration was applied locally against a Homebrew-installed PostgreSQL 17 + pgvector 0.8.2 and validated end-to-end. Six smoke tests, all passed:
+
+| # | Test | Result |
+|---|---|---|
+| 1 | `pgvector` round-trip — INSERT into `statute_chunks.embedding` (vector(1024)), SELECT with cosine-distance operator + HNSW index | ✓ passed |
+| 2 | `tsvector` full-text search via `search_tsv` GIN index, `plainto_tsquery` lookup | ✓ passed |
+| 3 | Hash-chain trigger accepts a valid genesis + chained INSERT into `ledger_entries` | ✓ passed |
+| 4 | `claim_ledgers.head_hash` automatically propagates from the latest `ledger_entries.this_hash` | ✓ passed |
+| 5 | Hash-chain trigger **rejects** an INSERT whose `prev_hash` doesn't match the previous entry's `this_hash` | ✓ passed — raised P0001 with the expected vs. got hex |
+| 6 | `refuse_mutation` trigger blocks UPDATE on `ledger_entries` (append-only enforcement) | ✓ passed |
+
+Schema artifacts confirmed:
+- **3 extensions:** vector 0.8.2, pgcrypto 1.3, pg_trgm 1.6.
+- **15 schema tables + `_migrations`:** statute_chunks, regulation_chunks, case_index, corpus_freshness, task_specs, claim_ledgers, ledger_entries, claims, retrieval_log, verifier_results, confidence_results, classification_results, completeness_results, deliverables, audit_anchors.
+- **9 indexes on `statute_chunks` alone:** primary key, idempotent-upsert unique (jurisdiction, doc_id, hash, chunk_index), HNSW on embedding (vector_cosine_ops), GIN on search_tsv, GIN on text (trigram), B-tree on (jurisdiction, code, section, subdivision), B-tree partial on chapter_id, B-tree partial on definitions_section, B-tree on doc_id.
+- **2 triggers on `ledger_entries`:** `enforce_ledger_chain` (BEFORE INSERT — hash-chain validation + head_hash propagation), `refuse_mutation` (BEFORE UPDATE/DELETE — audit immutability).
+- **Migration runtime:** 647ms wall-clock for the full schema apply.
+
+This validates the schema half of the Phase 2 done-criterion. The corpus-data half (CA Lab. Code chunks searchable via SQL + pgvector) still requires the Voyage AI signup + the bootstrap ingestion run; those steps are unchanged below.
+
 ## What still needs you (Phase 2 finish line)
 
 The code is authored and pushed. To hit the PRD's Phase 2 done-criterion (CA corpus searchable in Postgres), you need to make four external-system decisions and run two commands.
