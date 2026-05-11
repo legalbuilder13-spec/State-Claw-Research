@@ -23,6 +23,53 @@
 | Typer CLI (`ingest-statutes`, `ingest-regulations`, `freshness`, `parse-pdf`) | ✓ shipped | [`.../cli.py`](../../apps/ingestion-worker/src/agentic_law_os_ingestion/cli.py) |
 | Phase 2 status doc | ✓ shipped | this file |
 
+## Phase 2 — DONE (2026-05-11)
+
+**Done-criterion (PRD §17): California statute corpus is searchable in Postgres via SQL and pgvector queries. ✓ MET.**
+
+End-to-end run summary (against the local Homebrew Postgres 17 + pgvector 0.8.2 + live `leginfo.legislature.ca.gov`):
+
+- **38 sections enumerated**; **59 chunks inserted**; **0 errors**.
+- **15.5 seconds** wall-clock end-to-end (parallelism=4).
+- **All 59 chunks have valid 1024-dim `voyage-law-2` embeddings**.
+- **67,050 chars** of statutory text in `statute_chunks.text` (clean — no leginfo page chrome).
+- `corpus_freshness` row UPSERTed: current_through=2026-05-11, chunk_count=59, error_message=NULL.
+
+Search proof (all queries executed against the live corpus):
+
+- **Vector similarity (HNSW)** — closest neighbors to § 2775 (the operative ABC test) chunk 0 are § 2785 (joint liability) @ 0.16, § 2776 (B2B exemption) @ 0.23, § 2781, § 2778, § 2783 (occupation exemptions). Semantically correct cluster.
+- **Full-text search (GIN tsvector)** — keyword queries return ranked results.
+- **B-tree address lookup** — `(jurisdiction='US-CA', code='Lab.', section='2775')` is <1ms.
+- **R9 fast-filter** — 24 sections tagged `is_definitions_section=true` via partial index.
+- **R15 exemption tracking** — 10 sections (§§ 2776–2785) tagged `is_exemption_section=true`.
+
+Sample of clean § 2775 chunk 0 (the operative ABC test):
+
+```
+Labor Code - LAB
+DIVISION 3. EMPLOYMENT RELATIONS [2700 - 3122.4]
+( Division 3 enacted by Stats. 1937, Ch. 90. )
+CHAPTER 2. Employer and Employee [2750 - 2930]
+( Chapter 2 enacted by Stats. 1937, Ch. 90. )
+ARTICLE 1.5. Worker Status: Employees [2775 - 2787]
+( Article 1.5 added by Stats. 2020, Ch. 38, Sec. 2. )
+2775.
+(a) As used in this article:
+(1) "Dynamex" means Dynamex Operations W. Inc. v. Superior Court (2018) 4 Cal.5th 903.
+(2) "Borello" means the California Supreme Court's decision in S. ...
+```
+
+Voyage AI economics for this run: ~18,000 tokens consumed across 14 batch calls, all 2xx. Cost: $0.00 (well within the 200M-token free-tier allotment).
+
+Two bugs surfaced and fixed during the live run (commit `57cc1b10`):
+
+1. asyncpg didn't auto-register the pgvector codec — INSERTs failed with `expected str, got list`. Fix: register `pgvector.asyncpg.register_vector` in the pool's per-connection init hook.
+2. HTML extraction kept ~2000 chars of leginfo page chrome per section. Fix: priority-ordered selector list targeting known content containers (`#codeLawSectionNoHead` and friends) with graceful fallback.
+
+The Voyage AI rate-limit caveat from the previous ingestion attempt was resolved by adding a payment method to the Voyage account — standard rate limits unlocked even on the free tier.
+
+---
+
 ## Local schema validation (2026-05-11)
 
 The migration was applied locally against a Homebrew-installed PostgreSQL 17 + pgvector 0.8.2 and validated end-to-end. Six smoke tests, all passed:
