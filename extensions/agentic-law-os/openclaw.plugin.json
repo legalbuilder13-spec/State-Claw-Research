@@ -1,0 +1,69 @@
+{
+  "id": "agentic-law-os",
+  "activation": {
+    "onStartup": true
+  },
+  "enabledByDefault": false,
+  "name": "Agentic-Law-OS",
+  "description": "Legal-research plugin pack. Tier-1 intake builds a frozen TaskSpec; the orchestrator dispatches Statute / Verifier / Confidence / Renderer sub-agents and writes a hash-chained claim ledger. The R1-R15 + W1-W4 rule engine fires at every architectural seam (before_tool_call, after_tool_call, before_agent_finalize, message_sending) to refuse rather than fabricate. Consumes the kb_* MCP tools registered via .openclaw/mcp-config.json. See docs/legal/PRD-OPENCLAW-FORK.md.",
+  "contracts": {
+    "tools": []
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "company_context_path": {
+        "type": "string",
+        "default": "company-context",
+        "description": "Path (relative to repo root) to the active Company Context Pack. Operator may override per-deployment."
+      },
+      "source_profile": {
+        "type": "string",
+        "enum": ["profile-a-lexis", "profile-b-free"],
+        "default": "profile-b-free",
+        "description": "Default source profile for runs that do not specify one. Profile B (Lexis-free) is the v1 default per PRD §8."
+      },
+      "default_jurisdictions": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": ["US-CA"],
+        "description": "Default jurisdiction lock when intake cannot infer one from the requester message."
+      },
+      "rule_profile": {
+        "type": "string",
+        "enum": ["strict", "permissive-dev"],
+        "default": "strict",
+        "description": "Rule-engine enforcement mode. 'strict' is production. 'permissive-dev' downgrades blocking rules to warnings for local development; never use in production."
+      },
+      "claim_ledger": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "database_url_env": {
+            "type": "string",
+            "default": "DATABASE_URL",
+            "description": "Environment variable holding the Postgres connection string for the claim ledger and retrieval log. Same DB as the KB corpus."
+          }
+        }
+      },
+      "mcp_kb": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string",
+            "default": "node",
+            "description": "Command used to launch the kb-mcp server registered in .openclaw/mcp-config.json."
+          },
+          "args": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["apps/mcp-kb/dist/index.js"],
+            "description": "Arguments passed to the kb-mcp command. Default points at the workspace-local build output."
+          }
+        }
+      }
+    }
+  }
+}
